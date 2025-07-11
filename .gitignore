@@ -1,0 +1,9 @@
+# 依存関係
+/node_modules
+
+# ビルドディレクトリ
+.next/
+out/
+
+# ローカル環境変数ファイル
+.env.local
