@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+input,
+select,
+textarea {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+.order-schedule-container {
+  display: flex;
+  align-items: center;
+  gap: 2rem; /* 32px のスペース */
+}
