@@ -24,7 +24,7 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
       <h2 className="text-4xl font-bold text-blue-800 mb-10 text-center">発注者の情報</h2>
 
       <div className="max-w-4xl mx-auto">
-        <div className="space-y-12">
+        <div className="order-container">
           <div>
             <label className="block text-2xl font-bold text-gray-700 mb-6">
               担当者名 <span className="text-red-500 text-xl">*</span>

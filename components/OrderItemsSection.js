@@ -1,9 +1,20 @@
 import React from 'react';
 
-const OrderItemsSection = ({ orderItems, handleItemChange, calculateItemTotal, calculateTotal }) => {
+const OrderItemsSection = ({ orderItems, handleItemChange }) => {
+  // この部品内で完結する計算ロジック
+  const calculateItemTotal = (item) => {
+    const price = parseFloat(item.unitPrice) || 0;
+    const quantity = parseInt(item.quantity) || 0;
+    return price * quantity;
+  };
+
+  const calculateTotal = () => {
+    return orderItems.reduce((total, item) => total + calculateItemTotal(item), 0);
+  };
+
   return (
-    <div className="bg-yellow-50 p-6 rounded-lg w-full max-w-5xl">
-      <h2 className="text-2xl font-semibold text-yellow-800 mb-6 text-center">注文内容</h2>
+    <div className="bg-yellow-50 p-6 rounded-lg">
+      <h2 className="text-xl font-semibold text-yellow-800 mb-4 text-center">注文内容</h2>
       
       <div className="bg-white rounded-lg overflow-hidden shadow-sm">
         <table className="w-full">
@@ -17,7 +28,7 @@ const OrderItemsSection = ({ orderItems, handleItemChange, calculateItemTotal, c
           </thead>
           <tbody>
             {orderItems.map((item, index) => (
-              <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
+              <tr key={item.productKey} className="border-b border-gray-200 hover:bg-gray-50">
                 <td className="px-6 py-5 border-r border-gray-200">
                   <div className="flex items-center">
                     <div className="text-xl font-bold text-gray-800">{item.name}</div>
@@ -33,10 +44,9 @@ const OrderItemsSection = ({ orderItems, handleItemChange, calculateItemTotal, c
                   <input
                     type="number"
                     value={item.quantity === 0 ? '' : item.quantity}
-                    onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
+                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
                     min="0"
                     className="w-28 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-center text-lg"
-                    // ★★★ ここを変更 ★★★
                     placeholder="0"
                   />
                 </td>

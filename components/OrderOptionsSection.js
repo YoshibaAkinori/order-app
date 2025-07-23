@@ -2,35 +2,41 @@ import React from 'react';
 import { Plus, Trash2, Edit } from 'lucide-react';
 
 const OrderOptionsSection = ({ 
-  formData, setFormData, PRODUCTS, getOrderedProducts, 
-  addNetaChangePattern, removeNetaChangePattern, handleNetaChangeDetail, 
-  handleNetaSelection, getMaxQuantityForPattern 
+  order, 
+  PRODUCTS,
+  updateOrder,
+  // ネタ変更のための関数群
+  getOrderedProducts,
+  addNetaChangePattern,
+  removeNetaChangePattern,
+  handleNetaChangeDetail,
+  handleNetaSelection,
+  getMaxQuantityForPattern
 }) => {
   return (
     <div className="bg-purple-50 p-6 rounded-lg">
-      <h2 className="text-xl font-semibold text-purple-800 mb-4">備考・オプション</h2>
+      <h2 className="text-xl font-semibold text-purple-800 mb-6 text-center">備考・オプション</h2>
       
-      <div className="mt-6 space-y-4">
-        {/* ネタ変更 */}
-        <div className="bg-white p-4 rounded-lg border border-orange-200">
+      <div className="max-w-4xl mx-auto space-y-4">
+        <div className="bg-white p-4 rounded-lg border border-gray-200">
           <div className="flex items-center space-x-3 mb-3">
             <button
               type="button"
-              onClick={() => setFormData(prev => ({ ...prev, hasNetaChange: !prev.hasNetaChange }))}
+              onClick={() => updateOrder(order.id, { hasNetaChange: !order.hasNetaChange })}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                formData.hasNetaChange 
+                order.hasNetaChange 
                   ? 'bg-red-500 text-white hover:bg-red-600' 
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              {formData.hasNetaChange ? '✓ ネタ変更あり' : 'ネタ変更'}
+              {order.hasNetaChange ? '✓ ネタ変更あり' : 'ネタ変更'}
             </button>
             <span className="text-sm text-gray-600">
               ネタの変更がある場合はクリックしてください
             </span>
           </div>
           
-          {formData.hasNetaChange && (
+          {order.hasNetaChange && (
             <div className="mt-4 space-y-4">
               {getOrderedProducts().length > 0 ? (
                 <div>
@@ -72,7 +78,7 @@ const OrderOptionsSection = ({
                       </div>
 
                       <div className="space-y-4">
-                        {(formData.netaChanges[product.productKey] || []).map((pattern, patternIndex) => (
+                        {(order.netaChanges[product.productKey] || []).map((pattern, patternIndex) => (
                           <div key={pattern.id} className="bg-white p-4 rounded-lg border border-gray-200">
                             <div className="flex justify-between items-center mb-3">
                               <h5 className="font-medium text-gray-800">
@@ -119,7 +125,41 @@ const OrderOptionsSection = ({
                             </div>
                             
                             <div className="mt-3 text-xs text-gray-500">
-                              ※ チェックしたネタが変更されます。（チェックしていないネタは通常通りとなります。）
+                              ※ チェックしたネタが別のネタへ変更されます
+                            </div>
+                            
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                              <h6 className="text-sm font-medium text-gray-700 mb-2">ワサビ</h6>
+                              <div className="flex items-center space-x-4">
+                                <div className="flex items-center">
+                                  <input
+                                    type="radio"
+                                    id={`wasabi-ari-${pattern.id}`}
+                                    name={`wasabi-option-${pattern.id}`}
+                                    value="あり"
+                                    checked={pattern.wasabi === 'あり'}
+                                    onChange={(e) => handleNetaChangeDetail(product.productKey, pattern.id, 'wasabi', e.target.value)}
+                                    className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <label htmlFor={`wasabi-ari-${pattern.id}`} className="ml-2 block text-sm text-gray-900">
+                                    あり
+                                  </label>
+                                </div>
+                                <div className="flex items-center">
+                                  <input
+                                    type="radio"
+                                    id={`wasabi-nuki-${pattern.id}`}
+                                    name={`wasabi-option-${pattern.id}`}
+                                    value="抜き"
+                                    checked={pattern.wasabi === '抜き'}
+                                    onChange={(e) => handleNetaChangeDetail(product.productKey, pattern.id, 'wasabi', e.target.value)}
+                                    className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <label htmlFor={`wasabi-nuki-${pattern.id}`} className="ml-2 block text-sm text-gray-900">
+                                    抜き
+                                  </label>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -130,56 +170,21 @@ const OrderOptionsSection = ({
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <p>まず商品を選択してください</p>
-                  <p className="text-sm">商品の個数を入力すると、ネタ変更の詳細設定が表示されます</p>
                 </div>
               )}
               
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  その他ネタ変更の詳細・特別な要望
+                  その他ネタ変更の詳細
                 </label>
                 <textarea
-                  value={formData.netaChangeDetails}
-                  onChange={(e) => setFormData(prev => ({ ...prev, netaChangeDetails: e.target.value }))}
+                  value={order.netaChangeDetails}
+                  onChange={(e) => updateOrder(order.id, { netaChangeDetails: e.target.value })}
                   rows="3"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   placeholder="上記以外のネタ変更や特別な要望があれば記入してください"
                 />
               </div>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-orange-200">
-          <div className="flex items-center space-x-3 mb-3">
-            <button
-              type="button"
-              onClick={() => setFormData(prev => ({ ...prev, hasOtherDateOrder: !prev.hasOtherDateOrder }))}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                formData.hasOtherDateOrder 
-                  ? 'bg-blue-500 text-white hover:bg-blue-600' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              {formData.hasOtherDateOrder ? '✓ 別日注文あり' : '別日注文'}
-            </button>
-            <span className="text-sm text-gray-600">
-              別の日にも注文がある場合はクリックしてください
-            </span>
-          </div>
-          
-          {formData.hasOtherDateOrder && (
-            <div className="mt-3">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                別日注文の詳細
-              </label>
-              <textarea
-                value={formData.otherDateOrderDetails}
-                onChange={(e) => setFormData(prev => ({ ...prev, otherDateOrderDetails: e.target.value }))}
-                rows="3"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="別日の注文詳細を記入してください（例：○月○日に同じ内容、△月△日に違う商品等）"
-              />
             </div>
           )}
         </div>

@@ -14,3 +14,10 @@ textarea {
   align-items: center;
   gap: 2rem; /* 32px のスペース */
 }
+.order-container >* + *{
+  margin-top: 1.5rem;
+}
+
+.order-detail-container >* + *{
+  margin-top: 3rem;
+}
