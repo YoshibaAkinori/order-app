@@ -1,12 +1,6 @@
 import React, { useState } from 'react';
 
 const CustomerInfoSection = ({ formData, handleInputChange }) => {
-  // スタイル定義
-  const inputStyle = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xl leading-tight h-[40px]";
-  const textareaStyle = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xl resize-none leading-tight h-[65px]";
-  // ★★★ w-full を削除 ★★★
-  const selectStyle = "px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xl bg-white leading-tight h-[40px]";
-  
   // 日付と時間の選択肢
   const availableDates = [
     '2025年12月25日',
@@ -20,41 +14,41 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
   ];
 
   return (
-    <div className="bg-blue-50 p-8 rounded-lg min-h-screen">
-      <h2 className="text-4xl font-bold text-blue-800 mb-10 text-center">発注者の情報</h2>
+    <div className="customer-info-section">
+      <h2 className="customer-info-title">発注者の情報</h2>
 
-      <div className="max-w-4xl mx-auto">
-        <div className="order-container">
-          <div>
-            <label className="block text-2xl font-bold text-gray-700 mb-6">
-              担当者名 <span className="text-red-500 text-xl">*</span>
+      <div className="customer-info-container">
+        <div className="customer-info-form">
+          <div className="customer-info-field">
+            <label className="customer-info-label-large">
+              担当者名 <span className="required-mark-large">*</span>
             </label>
             <input
               type="text"
               name="contactName"
               value={formData.contactName}
               onChange={handleInputChange}
-              className={inputStyle}
+              className="customer-info-input"
               placeholder="山田太郎"
             />
           </div>
 
-          <div>
-            <label className="block text-xl font-semibold text-gray-700 mb-4">
-              メールアドレス <span className="text-red-500 text-lg">*</span>
+          <div className="customer-info-field">
+            <label className="customer-info-label">
+              メールアドレス <span className="required-mark">*</span>
             </label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              className={inputStyle}
+              className="customer-info-input"
               placeholder="example@company.com"
             />
           </div>
 
-          <div>
-            <label className="block text-xl font-semibold text-gray-700 mb-4">
+          <div className="customer-info-field">
+            <label className="customer-info-label">
               FAX番号
             </label>
             <input
@@ -62,41 +56,41 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
               name="fax"
               value={formData.fax}
               onChange={handleInputChange}
-              className={inputStyle}
+              className="customer-info-input"
               placeholder="026-268-1717"
             />
           </div>
 
-          <div>
-            <label className="block text-xl font-semibold text-gray-700 mb-4">
-              電話番号 <span className="text-red-500 text-lg">*</span>
+          <div className="customer-info-field">
+            <label className="customer-info-label">
+              電話番号 <span className="required-mark">*</span>
             </label>
             <input
               type="tel"
               name="tel"
               value={formData.tel}
               onChange={handleInputChange}
-              className={inputStyle}
+              className="customer-info-input"
               placeholder="026-268-1718"
             />
           </div>
 
-          <div>
-            <label className="block text-xl font-semibold text-gray-700 mb-4">
-              法人名 <span className="text-red-500 text-lg">*</span>
+          <div className="customer-info-field">
+            <label className="customer-info-label">
+              法人名 <span className="required-mark">*</span>
             </label>
             <input
               type="text"
               name="companyName"
               value={formData.companyName}
               onChange={handleInputChange}
-              className={inputStyle}
+              className="customer-info-input"
               placeholder="株式会社○○○"
             />
           </div>
 
-          <div>
-            <label className="block text-xl font-semibold text-gray-700 mb-4">
+          <div className="customer-info-field">
+            <label className="customer-info-label">
               部署名
             </label>
             <input
@@ -104,20 +98,20 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
               name="department"
               value={formData.department}
               onChange={handleInputChange}
-              className={inputStyle}
+              className="customer-info-input"
               placeholder="営業部"
             />
           </div>
 
-          <div>
-            <label className="block text-xl font-semibold text-gray-700 mb-4">
-              配達方法 <span className="text-red-500 text-lg">*</span>
+          <div className="customer-info-field">
+            <label className="customer-info-label">
+              配達方法 <span className="required-mark">*</span>
             </label>
             <select
               name="deliveryMethod"
               value={formData.deliveryMethod}
               onChange={handleInputChange}
-              className={inputStyle}
+              className="customer-info-input"
             >
               <option value="">選択してください</option>
               <option value="出前">出前</option>
@@ -126,10 +120,9 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
             </select>
           </div>
 
-          {/* ★★★ この「注文日程」セクションを修正 ★★★ */}
-          <div>
-            <label className="block text-xl font-semibold text-gray-700 mb-4">
-              注文日程 <span className="text-red-500 text-lg">*</span>
+          <div className="customer-info-field">
+            <label className="customer-info-label">
+              注文日程 <span className="required-mark">*</span>
             </label>
             <div className="order-schedule-container">
               {/* 日付選択 */}
@@ -137,7 +130,7 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
                 name="orderDate"
                 value={formData.orderDate}
                 onChange={handleInputChange}
-                className={`${selectStyle} `}
+                className="customer-info-select"
               >
                 <option value="">日付を選択</option>
                 {availableDates.map(date => (
@@ -149,7 +142,7 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
                 name="orderTime"
                 value={formData.orderTime}
                 onChange={handleInputChange}
-                className={`${selectStyle} `}
+                className="customer-info-select"
               >
                 <option value="">時間を選択</option>
                 {availableTimes.map(time => (
@@ -159,8 +152,8 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xl font-semibold text-gray-700 mb-4">
+          <div className="customer-info-field">
+            <label className="customer-info-label">
               お届け先住所
             </label>
             <textarea
@@ -168,20 +161,20 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
               value={formData.deliveryAddress}
               onChange={handleInputChange}
               rows="4"
-              className={textareaStyle}
+              className="customer-info-textarea"
               placeholder="〒380-0921 長野県長野市栗田1525"
             />
           </div>
 
-          <div>
-            <label className="block text-xl font-semibold text-gray-700 mb-4">
-              支払い方法 <span className="text-red-500 text-lg">*</span>
+          <div className="customer-info-field">
+            <label className="customer-info-label">
+              支払い方法 <span className="required-mark">*</span>
             </label>
             <select
               name="paymentMethod"
               value={formData.paymentMethod}
               onChange={handleInputChange}
-              className={inputStyle}
+              className="customer-info-input"
             >
               <option value="">選択してください</option>
               <option value="現金">現金</option>
@@ -191,8 +184,8 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-xl font-semibold text-gray-700 mb-4">
+          <div className="customer-info-field">
+            <label className="customer-info-label">
               領収書・請求書の宛名
             </label>
             <input
@@ -200,7 +193,7 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
               name="invoiceName"
               value={formData.invoiceName}
               onChange={handleInputChange}
-              className={inputStyle}
+              className="customer-info-input"
               placeholder="株式会社○○○"
             />
           </div>
@@ -237,7 +230,7 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
+    <div className="app-container">
       <CustomerInfoSection 
         formData={formData} 
         handleInputChange={handleInputChange} 

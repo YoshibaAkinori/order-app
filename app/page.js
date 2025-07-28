@@ -74,15 +74,15 @@ const OrderForm = () => {
         <>
           {/* オーバーレイ (背景をクリックで閉じる) */}
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            className="overlay"
             onClick={() => setIsSidebarOpen(false)}
           ></div>
 
           {/* サイドバー本体 */}
-          <div className="fixed top-0 right-0 w-[400px] max-w-full h-full bg-white p-8 shadow-lg z-50 overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
+          <div className="sidebar">
+            <div className="sidebar-header">
               <h3 className="text-xl font-semibold">店舗情報</h3>
-              <button onClick={() => setIsSidebarOpen(false)} className="p-1 rounded-full hover:bg-gray-200">
+              <button onClick={() => setIsSidebarOpen(false)} className="sidebar-close-btn">
                 <CloseIcon size={24} />
               </button>
             </div>
@@ -92,19 +92,18 @@ const OrderForm = () => {
         </>
       )}
       
-      <div className="fixed right-0 top-0 bg-red-500 w-20 h-20"></div>
 
       {/* --- メインコンテンツ --- */}
-      <div className="py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="flex justify-between items-center mb-8">
-              <h1 className="flex-1 text-3xl font-bold text-gray-800 text-center">注文フォーム</h1>
+      <div className="main-container">
+        <div className="main-content">
+          <div className="form-container">
+            <div className="form-header">
+              <h1 className="form-title">注文フォーム</h1>
               
               {/* ★★★ ハンバーガーメニューボタン ★★★ */}
               <button 
                 onClick={() => setIsSidebarOpen(true)}
-                className="p-2 rounded-md hover:bg-gray-100"
+                className="hamburger-menu-btn"
                 title="店舗情報を表示"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -115,7 +114,7 @@ const OrderForm = () => {
               </button>
             </div>
             
-            <div className="order-detail-container w-full max-w-none mx-auto" style={{width: '75%'}}>
+            <div className="order-detail-container w-full max-w-none mx-auto">
               <CustomerInfoSection formData={customerInfo} handleInputChange={handleCustomerInfoChange} />
               
               {orders.map((order, index) => (
@@ -134,18 +133,18 @@ const OrderForm = () => {
                 <button
                   type="button"
                   onClick={addOrder}
-                  className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:bg-gray-100 hover:border-gray-400 transition-colors"
+                  className="add-order-btn"
                 >
                   <Plus size={20} />
                   別日・別の届け先の注文を追加する
                 </button>
               </div>
 
-              <div className="text-center pt-10">
+              <div className="submit-container">
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  className="inline-flex items-center gap-2 px-8 py-3 bg-blue-600 text-white text-lg font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
+                  className="submit-btn"
                 >
                   <Send size={20} />
                   全注文を送信

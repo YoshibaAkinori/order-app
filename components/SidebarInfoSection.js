@@ -1,28 +1,26 @@
 import React from 'react';
 
 const SidebarInfoSection = () => {
-  const inputStyle = "w-full px-4 py-2 border border-gray-300 rounded-lg text-lg";
-
   return (
-    <div className="bg-gray-50 p-6 rounded-lg space-y-4" >
-      <h3 className="text-xl font-semibold text-gray-800 text-center">店舗記入欄</h3>
-      <div>
-        <label className="block text-base font-medium text-gray-700 mb-2">
+    <div className="sidebar-info-section">
+      <h3 className="sidebar-info-title">店舗記入欄</h3>
+      <div className="sidebar-info-field">
+        <label className="sidebar-info-label">
           受付番号
         </label>
         <input
           type="text"
-          className={inputStyle}
+          className="sidebar-info-input"
           placeholder="受付番号"
         />
       </div>
-       <div>
-        <label className="block text-base font-medium text-gray-700 mb-2">
+       <div className="sidebar-info-field">
+        <label className="sidebar-info-label">
           割振番号
         </label>
         <input
           type="text"
-          className={inputStyle}
+          className="sidebar-info-input"
           placeholder="割振番号"
         />
       </div>

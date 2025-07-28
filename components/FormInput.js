@@ -6,9 +6,9 @@ const FormInput = ({ label, name, value, onChange, type = 'text', placeholder, r
   const [isComposing, setIsComposing] = useState(false);
 
   return (
-    <div>
-      <label className="block text-base font-medium text-gray-700 mb-2">
-        {label} {required && <span className="text-red-500">*</span>}
+    <div className="form-input-container">
+      <label className="form-input-label">
+        {label} {required && <span className="required-mark">*</span>}
       </label>
       <input
         type={type}
@@ -25,7 +25,7 @@ const FormInput = ({ label, name, value, onChange, type = 'text', placeholder, r
             e.preventDefault();
           }
         }}
-        className="max-w-md w-full px-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-2xl"
+        className="form-input-field"
       />
     </div>
   );
