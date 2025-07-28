@@ -14,7 +14,7 @@ const OrderOptionsSection = ({
 }) => {
   return (
     <div className="order-options-section">
-      <h2 className="order-options-title">備考・オプション</h2>
+      <h2 className="order-options-title">ネタ変更 オプション</h2>
       <div className="order-options-content">
         <div className="option-card">
           <div className="option-card-header">

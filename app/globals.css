@@ -47,6 +47,9 @@ button {
   border-radius: 0.5rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   padding: 2rem;
+  width: 80%;          /* ★追加: 横幅を80%に */
+  margin-left: auto;   /* ★追加: 中央揃えのため */
+  margin-right: auto;  /* ★追加: 中央揃えのため */
 }
 
 .form-header {
@@ -299,6 +302,19 @@ button {
 .single-order-title {
   font-size: 1.5rem;
   font-weight: 700;
+  display: flex; /* ★追加 */
+  align-items: baseline; /* ★追加 */
+}
+
+/* ★↓ここから追加↓★ */
+.order-id-display {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #4b5563; /* やや暗いグレー */
+  margin-left: 0.75rem;
+  background-color: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
 }
 
 .single-order-delete-btn {
@@ -711,4 +727,166 @@ button {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
   border-color: transparent;
+}
+
+/* globals.css の SingleOrderSection.js styles のセクションに追加 */
+
+/* 既存の .single-order-select の下あたりに追加 */
+.single-order-textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background-color: #ffffff;
+  resize: vertical;
+}
+
+.single-order-textarea:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-color: transparent;
+}
+
+/* ========================================
+   Payment Info Section (from page.js)
+   ======================================== */
+
+.payment-info-section {
+  background-color: #dcfce7; /* 薄緑に変更 (Tailwindのgreen-100) */
+  border: 1px solid #a7f3d0;   /* 枠線の色を緑系に調整 (Tailwindのgreen-200) */
+  padding: 2rem;
+  border-radius: 0.5rem;
+}
+
+.payment-info-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.payment-info-fields-container {
+  max-width: 36rem; /* 入力欄が広がりすぎないように */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.payment-info-field {
+  margin-bottom: 1.5rem;
+}
+
+.payment-info-label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.payment-info-select,
+.payment-info-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background-color: #ffffff;
+}
+
+.payment-info-select:focus,
+.payment-info-input:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-color: transparent;
+}
+/* payment-option-toggle-wrapper をFlexboxに変更 */
+.payment-option-toggle-wrapper {
+  display: flex;
+  flex-direction: row;  /* 横並びに変更 */
+  align-items: center; /* 上下中央揃え */
+  gap: 1.5rem;         /* ボタンと説明文の間のスペース */
+  margin-bottom: 1.5rem;
+}
+
+.payment-option-note {
+  font-size: 0.875rem;
+  color: #4b5563;
+  text-align: left; /* 左揃えに変更 */
+  line-height: 1.6;
+}
+.payment-option-note p {
+  margin: 0;
+}
+.payment-option-toggle-btn {
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+
+.payment-option-toggle-btn.active {
+  background-color: #166534; /* 濃い緑 */
+  color: #ffffff;
+}
+
+.payment-option-toggle-btn.inactive {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.payment-options-container {
+  background-color: #ffffff;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px dashed #a7f3d0; /* 緑系の破線 */
+  margin-bottom: 2rem;
+}
+
+.payment-option-title-button {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s ease-in-out;
+}
+.payment-option-title-button:hover {
+  background-color: #f3f4f6;
+}
+
+.combined-payment-summary {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+}
+
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.summary-table th,
+.summary-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.summary-table thead th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.summary-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.summary-table .text-right {
+  text-align: right;
+  font-weight: 600;
 }
