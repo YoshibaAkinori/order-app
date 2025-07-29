@@ -890,3 +890,120 @@ button {
   text-align: right;
   font-weight: 600;
 }
+
+/* ========================================
+   Header.js
+   ======================================== */
+.app-header {
+  background-color: #2c3e50; /* ダークネイビー系に変更 */
+  color: #ecf0f1; /* 明るいグレー */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-main-row {
+  max-width: 80rem;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 2rem;
+}
+
+.header-nav {
+  display: flex;
+  gap: 2rem; /* リンク間のスペースを広げる */
+}
+
+.header-link {
+  color: #ecf0f1;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease-in-out;
+}
+.header-link:hover {
+  color: #95a5a6; /* ホバー時の色を少し変更 */
+}
+
+.logout-btn {
+  background-color: #c0392b; /* 赤系のログアウトボタン */
+  color: #ffffff;
+  padding: 0.6rem 1.2rem; /* パディングを調整 */
+  border-radius: 0.375rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease-in-out;
+}
+.logout-btn:hover {
+  background-color: #e74c3c;
+}
+
+.header-info-row {
+  background-color: #34495e;
+  font-size: 0.9rem;
+  padding: 0.6rem 2rem;
+  display: flex;
+  justify-content: center; /* ← flex-start から center に変更 */
+  align-items: center;
+  gap: 2rem;
+  border-top: 1px solid #7f8c8d;
+}
+
+.header-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* ラベルと入力欄の間隔 */
+}
+
+.header-label {
+  font-weight: 500;
+  color: #ecf0f1;
+
+}
+
+.header-input {
+  background-color: #34495e;
+  color: #ffffff;
+  border: 1px solid #7f8c8d;
+  border-radius: 0.25rem;
+  padding: 0.3rem 0.6rem;
+  width: 10rem; /* 入力欄の幅を少し広げる */
+}
+
+/* ========================================
+   Login Form (in Sidebar)
+   ======================================== */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.login-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+}
+
+.login-button {
+  background-color: #2563eb;
+  color: #ffffff;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease-in-out;
+}
+.login-button:hover {
+  background-color: #1d4ed8;
+}
