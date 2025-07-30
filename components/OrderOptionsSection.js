@@ -1,20 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus, Trash2, Edit } from 'lucide-react';
 
 const OrderOptionsSection = ({
   order,
   PRODUCTS,
+  SIDE_ORDERS_DB,
   updateOrder,
   getOrderedProducts,
   addNetaChangePattern,
   removeNetaChangePattern,
   handleNetaChangeDetail,
   handleNetaSelection,
-  getMaxQuantityForPattern
+  getMaxQuantityForPattern,
+  addSideOrder,
+  updateSideOrderQuantity,
+  removeSideOrder,
 }) => {
+  const [selectedSideOrder, setSelectedSideOrder] = useState('');
+
+  const handleAddSideOrder = () => {
+    addSideOrder(order.id, selectedSideOrder);
+    setSelectedSideOrder('');
+  };
+
   return (
     <div className="order-options-section">
-      <h2 className="order-options-title">ネタ変更 オプション</h2>
+      <h2 className="order-options-title">ネタ変更・その他の注文</h2>
       <div className="order-options-content">
         <div className="option-card">
           <div className="option-card-header">
@@ -87,8 +98,7 @@ const OrderOptionsSection = ({
                               ))}
                             </div>
                             <p className="pattern-note">※ チェックしたネタが別のネタへ変更されます</p>
-                            <div className="wasabi-section">
-                              <h6 className="wasabi-title">ワサビ</h6>
+                            <div className="wasabi-ori-section">
                               <div className="wasabi-options">
                                 <div className="wasabi-option">
                                   <input type="radio" id={`wasabi-ari-${pattern.id}`} name={`wasabi-option-${pattern.id}`} value="あり" checked={pattern.wasabi === 'あり'} onChange={(e) => handleNetaChangeDetail(product.productKey, pattern.id, 'wasabi', e.target.value)} className="wasabi-radio" />
@@ -99,6 +109,16 @@ const OrderOptionsSection = ({
                                   <label htmlFor={`wasabi-nuki-${pattern.id}`} className="wasabi-label">抜き</label>
                                 </div>
                               </div>
+                              <div className="ori-option">
+                                <input
+                                  type="checkbox"
+                                  id={`ori-check-${pattern.id}`}
+                                  checked={pattern.isOri || false}
+                                  onChange={(e) => handleNetaChangeDetail(product.productKey, pattern.id, 'isOri', e.target.checked)}
+                                  className="ori-checkbox"
+                                />
+                                <label htmlFor={`ori-check-${pattern.id}`} className="ori-label">折</label>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -107,21 +127,46 @@ const OrderOptionsSection = ({
                   ))}
                 </>
               ) : (
-                <div className="no-products-message">
-                  <p>まず商品を選択してください</p>
-                </div>
+                <div className="no-products-message"> <p>まず商品を選択してください</p> </div>
               )}
-
-              <div>
-                <label className="details-textarea-label">その他ネタ変更の詳細</label>
-                <textarea value={order.netaChangeDetails} onChange={(e) => updateOrder(order.id, { netaChangeDetails: e.target.value })} rows="3" className="details-textarea" placeholder="上記以外のネタ変更や特別な要望があれば記入してください" />
-              </div>
             </div>
           )}
+        </div>
+
+        <div className="option-card">
+          <h3 className="option-card-title">その他のご注文</h3>
+          <div className="side-order-add-form">
+            <select value={selectedSideOrder} onChange={(e) => setSelectedSideOrder(e.target.value)} className="side-order-select">
+              <option value="">-- 商品を選択 --</option>
+              {Object.keys(SIDE_ORDERS_DB).map(key => (
+                <option key={key} value={key}>{SIDE_ORDERS_DB[key].name} - {SIDE_ORDERS_DB[key].price}円</option>
+              ))}
+            </select>
+            <button type="button" onClick={handleAddSideOrder} disabled={!selectedSideOrder} className="add-side-order-btn"> <Plus size={16} /> 追加 </button>
+          </div>
+          
+          <div className="side-order-list">
+            {(order.sideOrders || []).map(item => (
+              <div key={item.productKey} className="side-order-item">
+                <span className="side-order-name">{SIDE_ORDERS_DB[item.productKey]?.name}</span>
+                <div className="side-order-controls">
+                  <input
+                    type="number"
+                    min="0"
+                    value={item.quantity === 0 ? '' : item.quantity}
+                    onChange={(e) => updateSideOrderQuantity(order.id, item.productKey, e.target.value)}
+                    className="side-order-quantity"
+                    placeholder="0"
+                  />
+                  <span>個</span>
+                  <button type="button" onClick={() => removeSideOrder(order.id, item.productKey)} className="remove-side-order-btn"> <Trash2 size={16} /> </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 };
-
 export default OrderOptionsSection;

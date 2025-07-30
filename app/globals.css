@@ -698,6 +698,84 @@ button {
   border-radius: 0.5rem;
 }
 
+/* ========================================
+   Order Options - Side Orders & Ori
+   ======================================== */
+.option-card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.side-order-add-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.side-order-select {
+  flex-grow: 1;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+}
+.add-side-order-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  background-color: #16a34a;
+  color: #ffffff;
+  border-radius: 0.375rem;
+}
+.add-side-order-btn:disabled {
+  background-color: #d1d5db;
+  cursor: not-allowed;
+}
+.side-order-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.side-order-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: #f9fafb;
+  border-radius: 0.25rem;
+}
+.side-order-controls { display: flex; align-items: center; gap: 0.5rem; }
+.side-order-quantity {
+  width: 4rem;
+  text-align: center;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  padding: 0.25rem;
+}
+.remove-side-order-btn { color: #ef4444; }
+
+.wasabi-ori-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+.ori-option { display: flex; align-items: center; }
+.ori-checkbox {
+  height: 1rem;
+  width: 1rem;
+  border-radius: 0.25rem;
+  border-color: #d1d5db;
+  color: #3b82f6;
+}
+.ori-checkbox:focus { outline: 2px solid #3b82f6; outline-offset: 2px; }
+.ori-label { margin-left: 0.5rem; font-size: 0.875rem; color: #111827; }
+
+/* Confirmation Modal Side Order Table */
+.side-order-table { margin-top: 0.5rem; }
+.side-order-table thead th { background-color: #f8fafc; font-style: italic; }
+.conf-subtotal-table { margin-top: -1px; } /* 上のテーブルと線を結合 */
+.conf-subtotal-table tfoot td { background-color: #f3f4f6; }
+
 
 /* ========================================
    FormInput.js
@@ -1007,3 +1085,248 @@ button {
 .login-button:hover {
   background-color: #1d4ed8;
 }
+
+
+
+/* ========================================
+   Submit Container Buttons
+   ======================================== */
+.submit-container {
+  text-align: center;
+  padding-top: 2.5rem;
+  display: flex; /* ★ Flexboxに変更 */
+  justify-content: center; /* ★ 中央揃え */
+  gap: 1rem; /* ★ ボタン間のスペース */
+}
+
+.confirm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 2rem;
+  background-color: #f97316; /* オレンジ系 */
+  color: #ffffff;
+  font-size: 1.125rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  transition: background-color 0.15s ease-in-out;
+}
+.confirm-btn:hover {
+  background-color: #ea580c;
+}
+
+
+/* ========================================
+   Confirmation Modal
+   ======================================== */
+.confirmation-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.confirmation-modal {
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+  width: 100%;
+  max-width: 820px; /* A4用紙に近い比率の幅 */
+  height: 95vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.confirmation-header {
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ffffff;
+  flex-shrink: 0;
+}
+
+.confirmation-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.confirmation-close-btn {
+  padding: 0.25rem;
+  border-radius: 9999px;
+  transition: background-color 0.15s ease-in-out;
+}
+.confirmation-close-btn:hover {
+  background-color: #e5e7eb;
+}
+
+.confirmation-content {
+  padding: 1rem;
+  overflow-y: auto;
+  flex-grow: 1;
+  background-color: #f9fafb;
+}
+
+.confirmation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  flex-shrink: 0;
+}
+
+.confirmation-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #1f2937;
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+}
+.confirmation-print-btn:hover {
+  background-color: #374151;
+}
+
+.confirmation-back-btn,
+.confirmation-submit-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+}
+.confirmation-back-btn { background-color: #6c757d; color: #ffffff; }
+.confirmation-back-btn:hover { background-color: #5a6268; }
+.confirmation-submit-btn { background-color: #2563eb; color: #ffffff; }
+.confirmation-submit-btn:hover { background-color: #1d4ed8; }
+
+
+/* ========================================
+   Confirmation Modal Content (Compact Layout for A4)
+   ======================================== */
+.confirmation-document.compact {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #000;
+  background-color: #ffffff;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.compact .conf-section {
+  margin-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed #cccccc;
+}
+.compact .conf-section:last-of-type { border-bottom: none; }
+
+.compact .conf-doc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #000;
+}
+.compact .conf-logo { font-size: 1.8rem; font-weight: bold; }
+.compact .conf-doc-title { text-align: right; }
+.compact .conf-doc-title h1 { font-size: 1.4rem; margin: 0; }
+.compact .conf-doc-title p { margin: 0.1rem 0 0; font-size: 0.8rem; }
+
+.compact .conf-current-date { text-align: right; margin-top: 0.5rem; font-size: 0.75rem; }
+
+.compact .conf-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 1rem;
+  font-size: 0.75rem;
+}
+.compact .conf-label { font-weight: bold; }
+.compact .conf-value { padding-left: 0.5rem; }
+
+.compact .conf-order-block {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #999;
+}
+.compact .conf-order-title {
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.compact .conf-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+}
+.compact .conf-items-table th,
+.compact .conf-items-table td {
+  border: 1px solid #cccccc;
+  padding: 0.2rem 0.3rem;
+  text-align: center;
+}
+.compact .conf-items-table th { background-color: #f3f4f6; }
+.compact .conf-items-table td:first-child { text-align: left; }
+.compact .conf-items-table td:last-child { text-align: right; }
+.compact .conf-items-table tfoot td { font-weight: bold; text-align: right; }
+
+/* ★★★ ここからが修正箇所 ★★★ */
+.compact .conf-per-order-payment-details {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+.compact .conf-order-total {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f3f4f6;
+  border-radius: 0.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+.compact .conf-order-total span { font-size: 1rem; }
+
+.compact .conf-payment-details { margin-top: 0.75rem; }
+.compact .conf-grand-total {
+  margin-top: 0.75rem; padding-top: 0.5rem; border-top: 2px solid #000;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 1rem; font-weight: bold;
+}
+.compact .conf-grand-total span { font-size: 1.1rem; }
+
+.compact .conf-footer {
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #cccccc;
+  text-align: center;
+  font-size: 0.65rem;
+  color: #6b7280;
+}
+.compact .conf-footer p { margin: 0; }
+
+.conf-order-payment {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.conf-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+
