@@ -15,6 +15,7 @@ const SingleOrderSection = ({
   addSideOrder,
   updateSideOrderQuantity,
   removeSideOrder,
+  calculateOrderTotal
 }) => {
   const availableDates = ['2025年12月25日', '2025年12月26日', '2026年01月05日'];
   const availableTimes = ['11:00', '12:00', '13:00'];
@@ -71,6 +72,8 @@ const SingleOrderSection = ({
     const newPatterns = (order.netaChanges[productKey] || []).map((p) => (p.id === patternId ? { ...p, selectedNeta: { ...p.selectedNeta, [netaItem]: isSelected } } : p));
     updateOrder(order.id, { netaChanges: { ...order.netaChanges, [productKey]: newPatterns } });
   };
+ 
+  const totalAmountForThisOrder = calculateOrderTotal(order);
 
   return (
     <div className="single-order-section">
@@ -94,7 +97,7 @@ const SingleOrderSection = ({
           <label className="single-order-label">配達方法 <span className="required-mark">*</span></label>
           <select name="deliveryMethod" value={order.deliveryMethod} onChange={handleInputChange} className="single-order-select"> <option value="">選択してください</option> <option value="出前">出前</option> <option value="東口受け取り">東口受け取り</option> <option value="日詰受け取り">日詰受け取り</option> </select>
         </div>
-        <OrderItemsSection orderItems={order.orderItems} handleItemChange={handleItemChange} />
+        <OrderItemsSection orderItems={order.orderItems} handleItemChange={handleItemChange} totalAmount={totalAmountForThisOrder}/>
         <OrderOptionsSection
           order={order}
           updateOrder={updateOrder}

@@ -1247,8 +1247,24 @@ button {
   gap: 0.25rem 1rem;
   font-size: 0.75rem;
 }
-.compact .conf-label { font-weight: bold; }
-.compact .conf-value { padding-left: 0.5rem; }
+.compact .conf-label { 
+  font-weight: bold; 
+  font-size: 0.8rem;
+  padding-left: 0.5rem;
+}
+.compact .conf-value { 
+  padding-left: 2rem;
+  font-size: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+ }
+ .compact .conf-value-order { 
+  padding-left: 2rem;
+  font-size: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  text-align: center;
+ }
 
 .compact .conf-order-block {
   margin-top: 0.75rem;
@@ -1329,4 +1345,186 @@ button {
   font-size: 0.9rem;
 }
 
+/* ========================================
+   Combined Payment Section
+   ======================================== */
+.payment-groups-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+.payment-group {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+.payment-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.payment-group-header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+.remove-group-btn {
+  color: #ef4444;
+}
+.remove-group-btn:hover {
+  color: #b91c1c;
+}
 
+.combined-payment-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+.combined-payment-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.combined-payment-select {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+}
+
+.order-checklist-container > p {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+.order-checklist-item {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}
+.order-checklist-item:hover {
+  background-color: #f0f9ff;
+}
+.order-checklist-item input {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.75rem;
+}
+.order-checklist-item label {
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.9rem;
+}
+
+.daily-payment-summary {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #eef2ff;
+  border-radius: 0.5rem;
+  border: 1px solid #c7d2fe;
+}
+.daily-payment-row.total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.add-group-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px dashed #9ca3af;
+  border-radius: 0.5rem;
+  color: #4b5563;
+}
+.add-group-btn:hover {
+  background-color: #f9fafb;
+  border-color: #6b7280;
+}
+/* ========================================
+   Daily Payment Summary
+   ======================================== */
+.daily-payment-summary {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f3f4f6;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.daily-payment-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1rem;
+}
+
+.daily-payment-row.total {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #d1d5db;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* ========================================
+   Receipt Details Section
+   ======================================== */
+.receipt-details-container {
+  margin-top: 1rem;
+}
+.receipt-groups-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.receipt-group {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+.receipt-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.receipt-group-header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+.receipt-input-grid { /* ★ クラス名を変更 & グリッド設定を変更 */
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Confirmation Modal Receipt Details */
+.conf-receipt-details {
+  margin-top: 1rem;
+}
+/* ========================================
+   Confirmation Modal - Payment Groups
+   ======================================== */
+.conf-payment-group {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  align-items: right;
+}
+
+.conf-value.group-total {
+  font-weight: bold;
+  font-size: 1rem;
+}

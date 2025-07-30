@@ -1,6 +1,6 @@
 "use client";
-import React, { useState } from 'react';
-import { Send, Plus, X as CloseIcon } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Send, Plus, X as CloseIcon, Trash2 } from 'lucide-react';
 import CustomerInfoSection from '../components/CustomerInfoSection';
 import SingleOrderSection from '../components/SingleOrderSection';
 import SidebarInfoSection from '../components/SidebarInfoSection';
@@ -44,6 +44,9 @@ const OrderForm = () => {
   const [receptionNumber, setReceptionNumber] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+  const [paymentGroups, setPaymentGroups] = useState([]);
+  const [isReceiptDetailsOpen, setIsReceiptDetailsOpen] = useState(false);
+  const [receipts, setReceipts] = useState([]);
 
   const handleLogin = () => setIsLoggedIn(true);
   const handleLogout = () => setIsLoggedIn(false);
@@ -60,7 +63,7 @@ const OrderForm = () => {
   const deleteOrder = (orderId) => setOrders(prev => prev.filter(o => o.id !== orderId));
   
   const handleSubmit = () => {
-    const finalData = { customer: customerInfo, orders: orders, receptionNumber, allocationNumber };
+    const finalData = { customer: customerInfo, orders, receptionNumber, allocationNumber, paymentGroups: paymentGroupsWithTotals, receipts: finalReceipts };
     console.log('最終的な注文データ:', finalData);
     if (isConfirmationOpen) setIsConfirmationOpen(false);
     alert('注文を送信します（コンソール確認）');
@@ -86,6 +89,7 @@ const OrderForm = () => {
     const newOpenState = !isCombinedPaymentSummaryOpen;
     setIsCombinedPaymentSummaryOpen(newOpenState);
     setCustomerInfo(prev => ({ ...prev, useCombinedPayment: newOpenState }));
+    if (!newOpenState) setPaymentGroups([]);
   };
 
   const addSideOrder = (orderId, productKey) => {
@@ -107,7 +111,7 @@ const OrderForm = () => {
       if (order.id === orderId) {
         const updatedSideOrders = order.sideOrders
           .map(item => item.productKey === productKey ? { ...item, quantity: finalQuantity } : item)
-          .filter(item => item.quantity > 0); // 0になったらリストから削除
+          .filter(item => item.quantity > 0);
         return { ...order, sideOrders: updatedSideOrders };
       }
       return order;
@@ -123,11 +127,74 @@ const OrderForm = () => {
       return order;
     }));
   };
+  
+  const addPaymentGroup = () => {
+    const newGroup = { id: Date.now(), paymentDate: '', checkedOrderIds: {} };
+    setPaymentGroups(prev => [...prev, newGroup]);
+  };
+  const removePaymentGroup = (groupId) => {
+    setPaymentGroups(prev => prev.filter(group => group.id !== groupId));
+  };
+  const updatePaymentGroup = (groupId, field, value) => {
+    setPaymentGroups(prev => prev.map(group => group.id === groupId ? { ...group, [field]: value } : group));
+  };
+  const handleGroupOrderCheck = (groupId, orderId) => {
+    setPaymentGroups(prevGroups => prevGroups.map(group => {
+      if (group.id === groupId) {
+        const newCheckedOrderIds = { ...group.checkedOrderIds };
+        if (newCheckedOrderIds[orderId]) {
+          delete newCheckedOrderIds[orderId];
+        } else {
+          newCheckedOrderIds[orderId] = true;
+        }
+        return { ...group, checkedOrderIds: newCheckedOrderIds };
+      }
+      return group;
+    }));
+  };
+
+  const handleToggleReceiptDetails = () => setIsReceiptDetailsOpen(prev => !prev);
+  const addReceipt = () => {
+    const newReceipt = { id: Date.now(), issueDate: '', recipientName: '', amount: '', documentType: '領収書' };
+    setReceipts(prev => [...prev, newReceipt]);
+  };
+  const removeReceipt = (receiptId) => setReceipts(prev => prev.filter(r => r.id !== receiptId));
+  const updateReceipt = (receiptId, field, value) => {
+    setReceipts(prev => prev.map(r => r.id === receiptId ? { ...r, [field]: value } : r));
+  };
+
+  const paymentGroupsWithTotals = useMemo(() => {
+    return paymentGroups.map(group => {
+      const groupTotal = orders.reduce((total, order) => {
+        if (group.checkedOrderIds[order.id]) {
+          return total + calculateOrderTotal(order);
+        }
+        return total;
+      }, 0);
+      return { ...group, total: groupTotal };
+    });
+  }, [paymentGroups, orders]);
+
+  const uniqueOrderDates = [...new Set(orders.map(o => o.orderDate).filter(Boolean))];
+
+  // ★★★ ここからが修正箇所 ★★★
+  let finalReceipts = receipts; // まずは手動設定された領収書リストを代入
+
+  // 手動設定が空で、かつグローバルな宛名が入力されている場合、自動生成する
+  if (receipts.length === 0 && customerInfo.invoiceName) {
+    finalReceipts = orders.map(order => ({
+      id: order.id,
+      documentType: '領収書',
+      issueDate: order.orderDate,
+      recipientName: customerInfo.invoiceName,
+      amount: calculateOrderTotal(order)
+    }));
+  }
 
   return (
     <div className="main-container">
       {isLoggedIn && ( <Header onLogout={handleLogout} receptionNumber={receptionNumber} onReceptionChange={handleReceptionNumberChange} allocationNumber={allocationNumber} onAllocationChange={handleAllocationNumberChange} /> )}
-      {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleSubmit} customerInfo={customerInfo} orders={orders} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} /> )}
+      {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleSubmit} customerInfo={customerInfo} orders={orders} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts}  paymentGroups={paymentGroupsWithTotals} /> )}
       {isSidebarOpen && ( <> <div className="overlay" onClick={() => setIsSidebarOpen(false)}></div> <div className="sidebar"> <div className="sidebar-header"> <h3>ログイン</h3> <button onClick={() => setIsSidebarOpen(false)} className="sidebar-close-btn"> <CloseIcon size={24} /> </button> </div> <SidebarInfoSection onLogin={handleLogin} /> </div> </> )}
       <div className="main-content">
         <div className="form-container">
@@ -148,19 +215,105 @@ const OrderForm = () => {
                   addSideOrder={addSideOrder}
                   updateSideOrderQuantity={updateSideOrderQuantity}
                   removeSideOrder={removeSideOrder}
+                  calculateOrderTotal={calculateOrderTotal}
                 />
             ))}
             <div className="add-order-container"> <button type="button" onClick={addOrder} className="add-order-btn"> <Plus size={20} /> 別日・別の届け先の注文を追加する </button> </div>
             <div className="payment-info-section">
               <h2 className="payment-info-title">お支払い情報</h2>
               <div className="payment-option-toggle-wrapper"> <button type="button" onClick={() => setIsPaymentOptionsOpen(!isPaymentOptionsOpen)} className={`payment-option-toggle-btn ${isPaymentOptionsOpen ? 'active' : 'inactive'}`} > {isPaymentOptionsOpen ? '✓ オプション設定' : 'オプション設定'} </button> <div className="payment-option-note"> <p>お支払い方法が以下の場合はクリックしてください</p> <p>・まとめてお支払いしたい</p> <p>・領収書を複数枚に分けたい</p> </div> </div>
-              {isPaymentOptionsOpen && ( <div className="payment-options-container"> <div className="payment-option-item"> <button type="button" onClick={handleToggleCombinedPayment} className="payment-option-title-button"> ・まとめてお支払いの有無 </button> {isCombinedPaymentSummaryOpen && orders.length > 1 && ( <div className="combined-payment-summary"> <table className="summary-table"> <thead> <tr> <th>お届け日時</th> <th>注文番号</th> <th>金額</th> </tr> </thead> <tbody> {orders.map((order) => ( <tr key={order.id}> <td>{order.orderDate || '未定'} {order.orderTime}</td> <td>{generateOrderNumber(order, allocationNumber)}</td> <td className="text-right">{calculateOrderTotal(order).toLocaleString()}円</td> </tr> ))} </tbody> </table> </div> )} </div> <div className="payment-option-item"> <button type="button" className="payment-option-title-button"> ・領収書の詳細指定 </button> </div> </div> )}
+              {isPaymentOptionsOpen && (
+                <div className="payment-options-container">
+                  <div className="payment-option-item">
+                    <button type="button" onClick={handleToggleCombinedPayment} className="payment-option-title-button"> ・まとめてお支払いの有無 </button>
+                    {isCombinedPaymentSummaryOpen && orders.length > 1 && (
+                      <div className="combined-payment-summary">
+                        <div className="payment-groups-container">
+                          {paymentGroupsWithTotals.map((group, index) => (
+                            <div key={group.id} className="payment-group">
+                              <div className="payment-group-header">
+                                <h4>支払グループ #{index + 1}</h4>
+                                <button onClick={() => removePaymentGroup(group.id)} className="remove-group-btn"><Trash2 size={16} /></button>
+                              </div>
+                              <div className="combined-payment-field">
+                                <label className="combined-payment-label">支払日</label>
+                                <select value={group.paymentDate} onChange={(e) => updatePaymentGroup(group.id, 'paymentDate', e.target.value)} className="combined-payment-select" >
+                                  <option value="">支払日を選択</option>
+                                  {uniqueOrderDates.map(date => (<option key={date} value={date}>{date}</option>))}
+                                </select>
+                              </div>
+                              <div className="order-checklist-container">
+                                <p>このグループに含める注文を選択:</p>
+                                {orders.map(order => (
+                                  <div key={order.id} className="order-checklist-item">
+                                    <input type="checkbox" id={`order-check-${group.id}-${order.id}`} checked={!!group.checkedOrderIds[order.id]} onChange={() => handleGroupOrderCheck(group.id, order.id)} />
+                                    <label htmlFor={`order-check-${group.id}-${order.id}`}> {generateOrderNumber(order, allocationNumber)} ({order.orderDate || '日付未定'}) - ¥{calculateOrderTotal(order).toLocaleString()} </label>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="daily-payment-summary">
+                                <div className="daily-payment-row total">
+                                  <strong>グループ合計金額:</strong>
+                                  <span>¥{group.total.toLocaleString()}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <button onClick={addPaymentGroup} className="add-group-btn"> <Plus size={16} /> 支払グループを追加 </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="payment-option-item">
+                    <button type="button" onClick={handleToggleReceiptDetails} className="payment-option-title-button"> ・領収書の詳細指定 </button>
+                    {isReceiptDetailsOpen && (
+                      <div className="receipt-details-container">
+                        <div className="receipt-groups-container">
+                          {receipts.map((receipt, index) => (
+                            <div key={receipt.id} className="receipt-group">
+                              <div className="receipt-group-header">
+                                <h4>詳細 #{index + 1}</h4>
+                                <button onClick={() => removeReceipt(receipt.id)} className="remove-group-btn"><Trash2 size={16} /></button>
+                              </div>
+                              <div className="receipt-input-grid">
+                                <div className="combined-payment-field">
+                                  <label className="combined-payment-label">種別</label>
+                                  <select className="combined-payment-select" value={receipt.documentType} onChange={(e) => updateReceipt(receipt.id, 'documentType', e.target.value)} >
+                                    <option value="領収書">領収書</option>
+                                    <option value="請求書">請求書</option>
+                                  </select>
+                                </div>
+                                <div className="combined-payment-field">
+                                  <label className="combined-payment-label">発行日</label>
+                                  <select className="combined-payment-select" value={receipt.issueDate} onChange={(e) => updateReceipt(receipt.id, 'issueDate', e.target.value)}>
+                                    <option value="">発行日を選択</option>
+                                    {uniqueOrderDates.map(date => (<option key={date} value={date}>{date}</option>))}
+                                  </select>
+                                </div>
+                                <div className="combined-payment-field">
+                                  <label className="combined-payment-label">宛名</label>
+                                  <input type="text" className="combined-payment-input" placeholder="株式会社○○○" value={receipt.recipientName} onChange={(e) => updateReceipt(receipt.id, 'recipientName', e.target.value)} />
+                                </div>
+                                <div className="combined-payment-field">
+                                  <label className="combined-payment-label">金額</label>
+                                  <input type="number" className="combined-payment-input" placeholder="0" value={receipt.amount} onChange={(e) => updateReceipt(receipt.id, 'amount', e.target.value)} />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <button onClick={addReceipt} className="add-group-btn"> <Plus size={16} /> 領収書/請求書を追加 </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="payment-info-fields-container">
                 <div className="payment-info-field"> <label className="payment-info-label"> 支払い方法 <span className="required-mark">*</span> </label> <select name="paymentMethod" value={customerInfo.paymentMethod} onChange={handleCustomerInfoChange} className="payment-info-select"> <option value="">選択してください</option> <option value="現金">現金</option> <option value="銀行振込">銀行振込</option> <option value="クレジットカード">クレジットカード</option> <option value="請求書払い">請求書払い</option> </select> </div>
                 <div className="payment-info-field"> <label className="payment-info-label"> 領収書・請求書の宛名 </label> <input type="text" name="invoiceName" value={customerInfo.invoiceName} onChange={handleCustomerInfoChange} className="payment-info-input" placeholder="株式会社○○○" /> </div>
               </div>
             </div>
-            <div className="submit-container"> <button type="button" onClick={() => setIsConfirmationOpen(true)} className="confirm-btn"> 注文内容を確認 </button> </div>
+            <div className="submit-container"> <button type="button" onClick={() => setIsConfirmationOpen(true)} className="confirm-btn"> 注文内容を確認 </button> <button type="button" onClick={handleSubmit} className="submit-btn"> <Send size={20} /> 全注文を送信 </button> </div>
           </div>
         </div>
       </div>

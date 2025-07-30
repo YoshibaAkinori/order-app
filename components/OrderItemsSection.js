@@ -1,8 +1,11 @@
 import React from 'react';
 
-const OrderItemsSection = ({ orderItems, handleItemChange }) => {
-  const calculateItemTotal = (item) => (parseFloat(item.unitPrice) || 0) * (parseInt(item.quantity) || 0);
-  const calculateTotal = () => orderItems.reduce((total, item) => total + calculateItemTotal(item), 0);
+ const OrderItemsSection = ({ orderItems, handleItemChange, totalAmount }) => {
+  const calculateItemTotal = (item) => {
+    const price = parseFloat(item.unitPrice) || 0;
+    const quantity = parseInt(item.quantity) || 0;
+    return price * quantity;
+  };
 
   return (
     <div className="order-items-section">
@@ -47,7 +50,7 @@ const OrderItemsSection = ({ orderItems, handleItemChange }) => {
                 <span className="totals-label">合計金額</span>
               </td>
               <td>
-                <div className="totals-value">¥{calculateTotal().toLocaleString()}</div>
+                <div className="totals-value">¥{totalAmount.toLocaleString()}</div>
               </td>
             </tr>
           </tbody>

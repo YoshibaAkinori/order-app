@@ -12,37 +12,21 @@ const ConfirmationModal = ({
   generateOrderNumber,
   calculateGrandTotal,
   isPaymentOptionsOpen,
-  SIDE_ORDERS_DB
+  isPayment,
+  isReceipt,
+  SIDE_ORDERS_DB,
+  receipts,
+  paymentGroups
 }) => {
   const handlePrint = () => {
     const printContent = document.getElementById('printable-area');
     if (printContent) {
-      const stylesheets = Array.from(document.styleSheets)
-        .map(sheet => sheet.href)
-        .filter(href => href)
-        .map(href => `<link rel="stylesheet" href="${href}">`)
-        .join('');
+      const stylesheets = Array.from(document.styleSheets).map(sheet => sheet.href).filter(href => href).map(href => `<link rel="stylesheet" href="${href}">`).join('');
       const printWindow = window.open('', '_blank');
       printWindow.document.write(`
         <html>
-          <head>
-            <title>注文確認書</title>
-            ${stylesheets}
-            <style>
-              body { 
-                margin: 0;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-              .confirmation-document {
-                box-shadow: none;
-                padding: 0;
-              }
-            </style>
-          </head>
-          <body>
-            ${printContent.innerHTML}
-          </body>
+          <head><title>注文確認書</title>${stylesheets}<style>body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.confirmation-document{box-shadow:none;padding:0;}</style></head>
+          <body>${printContent.innerHTML}</body>
         </html>
       `);
       printWindow.document.close();
@@ -72,6 +56,7 @@ const ConfirmationModal = ({
               <header className="conf-doc-header"> <div className="conf-logo">松栄寿し</div> <div className="conf-doc-title"> <h1>注文確認書</h1> <p>受付番号: {receptionNumber || '-----'}</p> </div> </header>
               <section className="conf-section"> <p className="conf-current-date">{new Date().toLocaleDateString('ja-JP')} 現在、以下の内容でご注文を受付けております。</p> </section>
               <section className="conf-section">
+                <h2 className="conf-order-title">お客様情報</h2>
                 <div className="conf-details-grid">
                   <div className="conf-grid-item"> <div className="conf-label">部署/法人名</div> <div className="conf-value">{customerInfo.companyName || '(未入力)'} {customerInfo.department}</div> </div>
                   <div className="conf-grid-item"> <div className="conf-label">ご担当者名</div> <div className="conf-value">{customerInfo.contactName || '(未入力)'} 様</div> </div>
@@ -82,51 +67,24 @@ const ConfirmationModal = ({
               </section>
               {orders.map((order, index) => (
                 <section key={order.id} className="conf-section conf-order-block">
-                  <h2 className="conf-order-title">#{index + 1} 注文番号：({generateOrderNumber(order, allocationNumber)})</h2>
+                  <h2 className="conf-order-title">ご注文 #{index + 1} (注文番号: {generateOrderNumber(order, allocationNumber)})</h2>
                   <div className="conf-grid">
                     <div className="conf-grid-item"> <div className="conf-label">お届け日時</div> <div className="conf-value">{order.orderDate || '(未入力)'} {order.orderTime || ''}</div> </div>
                     <div className="conf-grid-item"> <div className="conf-label">お届け先</div> <div className="conf-value">{order.deliveryAddress || '(未入力)'}</div> </div>
                   </div>
                   <table className="conf-items-table">
-                    <thead>
-                      <tr>
-                        <th>品名</th>
-                        <th>単価</th>
-                        <th>個数</th>
-                        <th>金額</th>
-                      </tr>
-                    </thead>
+                    <thead> <tr> <th>品名</th> <th>単価</th> <th>個数</th> <th>金額</th> </tr> </thead>
                     <tbody>
-                      {/* メイン商品の行を生成 */}
                       {order.orderItems.filter(item => item.quantity > 0).flatMap(item => {
                         const netaChangePatterns = order.netaChanges?.[item.productKey] || [];
                         const changedQty = netaChangePatterns.reduce((sum, p) => sum + (parseInt(p.quantity, 10) || 0), 0);
                         const standardQty = item.quantity - changedQty;
-                        
                         const rows = [];
-
-                        // 通常商品の行
                         if (standardQty > 0) {
-                          rows.push(
-                            <tr key={item.productKey}>
-                              <td>{item.name}</td>
-                              <td>{item.unitPrice.toLocaleString()}円</td>
-                              <td>{standardQty}</td>
-                              <td>¥{(item.unitPrice * standardQty).toLocaleString()}</td>
-                            </tr>
-                          );
+                          rows.push(<tr key={item.productKey}><td>{item.name}</td><td>{item.unitPrice.toLocaleString()}円</td><td>{standardQty}</td><td>¥{(item.unitPrice * standardQty).toLocaleString()}</td></tr>);
                         }
-
-                        // ネタ変更商品の行
                         netaChangePatterns.forEach(pattern => {
-                          rows.push(
-                            <tr key={pattern.id}>
-                              <td>{item.name}{formatItemModifiers(pattern)}</td>
-                              <td>{item.unitPrice.toLocaleString()}円</td>
-                              <td>{pattern.quantity}</td>
-                              <td>¥{(item.unitPrice * pattern.quantity).toLocaleString()}</td>
-                            </tr>
-                          );
+                          rows.push(<tr key={pattern.id}><td>{item.name}{formatItemModifiers(pattern)}</td><td>{item.unitPrice.toLocaleString()}円</td><td>{pattern.quantity}</td><td>¥{(item.unitPrice * pattern.quantity).toLocaleString()}</td></tr>);
                         });
                         return rows;
                       })}
@@ -140,49 +98,51 @@ const ConfirmationModal = ({
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr>
-                        <td colSpan="3">小計</td>
-                        <td>¥{calculateOrderTotal(order).toLocaleString()}</td>
-                      </tr>
+                      <tr><td colSpan="3">小計</td><td>¥{calculateOrderTotal(order).toLocaleString()}</td></tr>
                     </tfoot>
                   </table>
-                  {/* オプションOFF（個別支払い）の場合のみ、ここに支払い情報を表示 */}
-                  {!isPaymentOptionsOpen && (
+                  {/* ★★★ 個別支払い時の表示ブロックを修正 ★★★ */}
+                  {!isPaymentOptionsOpen &&(
                     <div className="conf-per-order-payment-details">
-                      <div className="conf-grid">
-                        <div className="conf-grid-item">
-                          <div className="conf-label">お支払い方法</div>
-                          <div className="conf-value">{customerInfo.paymentMethod || '(未入力)'}</div>
-                        </div>
-                        <div className="conf-grid-item">
-                          <div className="conf-label">領収書宛名</div>
-                          <div className="conf-value">{customerInfo.invoiceName || '(指定なし)'}</div>
-                        </div>
-                      </div>
                       <div className="conf-order-total">
                         <strong>お支払い金額</strong>
                         <span>¥{calculateOrderTotal(order).toLocaleString()}</span>
                       </div>
                     </div>
                   )}
-                </section>
+                  </section>
               ))}
-              {isPaymentOptionsOpen && (
+
                 <section className="conf-section conf-payment-details">
-                  <div className="conf-grid">
-                    <div className="conf-grid-item">
-                      <div className="conf-label">お支払い方法</div>
-                      <div className="conf-value">{customerInfo.paymentMethod || '(未入力)'}</div>
-                    </div>
-                    <div className="conf-grid-item">
-                      <div className="conf-label">領収書宛名</div>
-                      <div className="conf-value">{customerInfo.invoiceName || '(指定なし)'}</div>
-                    </div>
-                  </div>
-                  <div className="conf-grand-total">
-                    <strong>お支払い金額</strong>
-                    <span>¥ {calculateGrandTotal().toLocaleString()}</span>
-                  </div>
+                  {(paymentGroups || []).map((group, index) => (
+                      <div key={group.id} className="conf-payment-group">
+                        <div className="conf-grid-item">
+                          <div className="conf-grid-item">
+                            <div className="conf-label">支払グループ #{index + 1} (支払日: {group.paymentDate || '未定'})</div>
+                            <div className="conf-value-order">
+                                対象注文: {Object.keys(group.checkedOrderIds).map(orderId => {
+                              const order = orders.find(o => o.id === parseInt(orderId));
+                              return order ? generateOrderNumber(order, allocationNumber) : '';
+                                }).join(', ')}
+                            </div>
+                            </div>
+                        </div>
+                        <div className="conf-grand-total">
+                            <strong>合計金額</strong>
+                            <span>¥ {calculateGrandTotal().toLocaleString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                </section>
+
+              
+              {(receipts || []).length > 0 && (
+                <section className="conf-section conf-receipt-details">
+                  <h2 className="conf-order-title">領収書・請求書 詳細</h2>
+                  <table className="conf-items-table">
+                    <thead><tr><th>種別</th><th>発行日</th><th>宛名</th><th>金額</th></tr></thead>
+                    <tbody>{receipts.map(receipt => (<tr key={receipt.id}><td>{receipt.documentType}</td><td>{receipt.issueDate || '(未指定)'}</td><td>{receipt.recipientName || '(未指定)'}</td><td>¥{(parseInt(receipt.amount, 10) || 0).toLocaleString()}</td></tr>))}</tbody>
+                  </table>
                 </section>
               )}
               <footer className="conf-footer"> <p><strong>松栄寿し 長野駅東口店</strong></p> <p>〒380-0921 長野県長野市大字栗田1525番地</p> <p>TEL: (026)217-8700 / FAX: (026)268-1718</p> </footer>
