@@ -12,8 +12,6 @@ const ConfirmationModal = ({
   generateOrderNumber,
   calculateGrandTotal,
   isPaymentOptionsOpen,
-  isPayment,
-  isReceipt,
   SIDE_ORDERS_DB,
   receipts,
   paymentGroups
@@ -102,7 +100,7 @@ const ConfirmationModal = ({
                     </tfoot>
                   </table>
                   {/* ★★★ 個別支払い時の表示ブロックを修正 ★★★ */}
-                  {!isPaymentOptionsOpen &&(
+                  {(paymentGroups || []).length <= 0 && (
                     <div className="conf-per-order-payment-details">
                       <div className="conf-order-total">
                         <strong>お支払い金額</strong>
