@@ -776,6 +776,16 @@ button {
 .conf-subtotal-table { margin-top: -1px; } /* 上のテーブルと線を結合 */
 .conf-subtotal-table tfoot td { background-color: #f3f4f6; }
 
+.side-order-info {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.side-order-price {
+  font-size: 0.875rem; /* 14px */
+  color: #6b7280; /* Gray-500 */
+}
 
 /* ========================================
    FormInput.js

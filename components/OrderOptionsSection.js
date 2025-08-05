@@ -148,7 +148,10 @@ const OrderOptionsSection = ({
           <div className="side-order-list">
             {(order.sideOrders || []).map(item => (
               <div key={item.productKey} className="side-order-item">
-                <span className="side-order-name">{SIDE_ORDERS_DB[item.productKey]?.name}</span>
+                <div className="side-order-info">
+                  <span className="side-order-name">{SIDE_ORDERS_DB[item.productKey]?.name}</span>
+                  <span className="side-order-price">{SIDE_ORDERS_DB[item.productKey]?.price.toLocaleString()}円</span>
+                </div>
                 <div className="side-order-controls">
                   <input
                     type="number"

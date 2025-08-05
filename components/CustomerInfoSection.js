@@ -40,6 +40,17 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
             <label className="customer-info-label">部署名</label>
             <input type="text" name="department" value={formData.department} onChange={handleInputChange} className="customer-info-input" placeholder="営業部" />
           </div>
+          <div className="customer-info-field">
+            <label className="customer-info-label">階数</label>
+            <input
+              type="number"
+              name="floorNumber"
+              value={formData.floorNumber}
+              onChange={handleInputChange}
+              className="customer-info-input"
+              placeholder="例: 2"
+            />
+          </div>
         </div>
       </div>
     </div>

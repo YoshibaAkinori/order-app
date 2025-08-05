@@ -65,7 +65,7 @@ const ConfirmationModal = ({
               </section>
               {orders.map((order, index) => (
                 <section key={order.id} className="conf-section conf-order-block">
-                  <h2 className="conf-order-title">ご注文 #{index + 1} (注文番号: {generateOrderNumber(order, allocationNumber)})</h2>
+                  <h2 className="conf-order-title">ご注文 #{index + 1} (注文番号: {generateOrderNumber(order, receptionNumber, index)})</h2>
                   <div className="conf-grid">
                     <div className="conf-grid-item"> <div className="conf-label">お届け日時</div> <div className="conf-value">{order.orderDate || '(未入力)'} {order.orderTime || ''}</div> </div>
                     <div className="conf-grid-item"> <div className="conf-label">お届け先</div> <div className="conf-value">{order.deliveryAddress || '(未入力)'}</div> </div>
@@ -120,7 +120,7 @@ const ConfirmationModal = ({
                             <div className="conf-value-order">
                                 対象注文: {Object.keys(group.checkedOrderIds).map(orderId => {
                               const order = orders.find(o => o.id === parseInt(orderId));
-                              return order ? generateOrderNumber(order, allocationNumber) : '';
+                              return order ? generateOrderNumber(order, receptionNumber, index) : '';
                                 }).join(', ')}
                             </div>
                             </div>

@@ -7,6 +7,8 @@ const Header = ({ onLogout, receptionNumber, onReceptionChange, allocationNumber
       {/* 1段目 */}
       <div className="header-main-row">
         <nav className="header-nav">
+          <a href="./" className="header-link">注文入力</a>
+          <a href="./change" className="header-link">注文変更</a>
           <a href="./settings" className="header-link">設定</a>
           <a href="./dashboard" className="header-link">注文一覧</a>
         </nav>
@@ -16,15 +18,6 @@ const Header = ({ onLogout, receptionNumber, onReceptionChange, allocationNumber
       </div>
       {/* 2段目 (入力欄に変更) */}
       <div className="header-info-row">
-        <div className="header-input-group">
-          <label className="header-label">受付番号:</label>
-          <input
-            type="text"
-            className="header-input"
-            value={receptionNumber}
-            onChange={onReceptionChange}
-          />
-        </div>
         <div className="header-input-group">
           <label className="header-label">割振番号:</label>
           <input
