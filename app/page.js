@@ -8,10 +8,11 @@ import Header from '../components/Header';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { generateEmailHtml } from '../utils/emailGenerator';
 
+
 const PRODUCTS = {
   kiwami: { name: '極', price: 3580, neta: ['まぐろ', 'サーモン', 'いくら', 'えび', 'いか', 'うに', 'あなご', 'たまご'] },
   takumi: { name: '匠', price: 3240, neta: ['まぐろ', 'サーモン', 'いくら', 'えび', 'いか', 'たまご', 'きゅうり巻き'] },
-  kei: { name: '恵', price: 2480, neta: ['まぐろ', 'サーモン', 'えび', 'いか', 'たまご', 'きゅうり巻き'] },
+  megumi: { name: '恵', price: 2480, neta: ['まぐろ', 'サーモン', 'えび', 'いか', 'たまご', 'きゅうり巻き'] },
   izumi: { name: '泉', price: 1890, neta: ['まぐろ', 'サーモン', 'えび', 'たまご', 'きゅうり巻き'] }
 };
 
@@ -137,11 +138,18 @@ const OrderForm = () => {
   };
   
   const addPaymentGroup = () => {
-    const newGroup = { id: Date.now(), paymentDate: '', checkedOrderIds: {} };
-    setPaymentGroups(prev => [...prev, newGroup]);
+  const newGroup = { id: Date.now(), paymentDate: '', checkedOrderIds: {} };
+  setPaymentGroups(prev => [...prev, newGroup]);
+  // 支払いグループを追加したら、領収書の詳細を自動的に開く
+  setIsReceiptDetailsOpen(true); 
   };
   const removePaymentGroup = (groupId) => {
-    setPaymentGroups(prev => prev.filter(group => group.id !== groupId));
+  setPaymentGroups(prev => prev.filter(group => group.id !== groupId));
+  // ★★★【注意】★★★
+  // 上記で追加した useEffect が paymentGroups の変更を検知して
+  // 自動で manualReceipts を更新するため、ここでの個別削除は不要です。
+  // useEffect がなければ、以下の行が必要でした。
+  // setManualReceipts(prev => prev.filter(r => r.groupId !== groupId));
   };
   const updatePaymentGroup = (groupId, field, value) => {
     setPaymentGroups(prev => prev.map(group => group.id === groupId ? { ...group, [field]: value } : group));
@@ -160,17 +168,6 @@ const OrderForm = () => {
       return group;
     }));
   };
-
-  const handleToggleReceiptDetails = () => setIsReceiptDetailsOpen(prev => !prev);
-  const addReceipt = () => {
-    const newReceipt = { id: Date.now(), issueDate: '', recipientName: '', amount: '', documentType: '領収書' };
-    setManualReceipts(prev => [...prev, newReceipt]);
-  };
-  const removeReceipt = (receiptId) => setManualReceipts(prev => prev.filter(r => r.id !== receiptId));
-  const updateReceipt = (receiptId, field, value) => {
-    setManualReceipts(prev => prev.map(r => r.id === receiptId ? { ...r, [field]: value } : r));
-  };
-
   const paymentGroupsWithTotals = useMemo(() => {
     return paymentGroups.map(group => {
       const groupTotal = orders.reduce((total, order) => {
@@ -180,6 +177,44 @@ const OrderForm = () => {
       return { ...group, total: groupTotal };
     });
   }, [paymentGroups, orders]);
+
+  React.useEffect(() => {
+    // 支払いグループが1つもなければ、何もしない（手動モード）
+    if (paymentGroups.length === 0) {
+      // 念のため、自動生成された可能性のあるデータをクリアする
+      if (manualReceipts.some(r => r.groupId)) {
+        setManualReceipts([]);
+      }
+      return;
+    }
+
+    const newManualReceipts = paymentGroupsWithTotals.map(group => {
+      // 支払い方法に基づいて書類種別を決定
+      const docType = getDocumentType(customerInfo.paymentMethod) || '領収書';
+      
+      return {
+        id: group.id, // IDをグループと一致させる
+        groupId: group.id, // グループとの関連付けID
+        documentType: docType,
+        issueDate: group.paymentDate, // 支払日を発行日とする
+        recipientName: customerInfo.invoiceName, // 宛名は顧客情報から取得
+        amount: group.total, // 金額はグループの合計金額
+      };
+    });
+
+    setManualReceipts(newManualReceipts);
+  }, [paymentGroupsWithTotals, customerInfo.invoiceName, customerInfo.paymentMethod]);
+
+  const handleToggleReceiptDetails = () => setIsReceiptDetailsOpen(prev => !prev);
+  const isReceiptAutomated = paymentGroups.length > 0;
+  const addReceipt = () => {
+    const newReceipt = { id: Date.now(), issueDate: '', recipientName: '', amount: '', documentType: '領収書' };
+    setManualReceipts(prev => [...prev, newReceipt]);
+  };
+  const removeReceipt = (receiptId) => setManualReceipts(prev => prev.filter(r => r.id !== receiptId));
+  const updateReceipt = (receiptId, field, value) => {
+    setManualReceipts(prev => prev.map(r => r.id === receiptId ? { ...r, [field]: value } : r));
+  };
 
   const getDocumentType = (paymentMethod) => {
     if (['現金', 'クレジットカード'].includes(paymentMethod)) return '領収書';
@@ -253,14 +288,21 @@ const OrderForm = () => {
       return;
     }
 
+    // 各注文に最終的な注文番号を追加
+    const ordersWithFinalId = orders.map((order, index) => ({
+      ...order,
+      orderId: generateOrderNumber(order, receptionNumber, index)
+    }));
+
     const finalData = { 
       customer: customerInfo, 
-      orders, 
+      orders: ordersWithFinalId,
       receptionNumber, 
       allocationNumber, 
       paymentGroups: paymentGroupsWithTotals, 
       receipts: finalReceipts,
-      SIDE_ORDERS_DB // Lambda側で単価を引くために追加
+      SIDE_ORDERS_DB, // Lambda側で単価を引くために追加
+      orderType: '新規注文',
     };
 
     try {
@@ -320,7 +362,7 @@ const OrderForm = () => {
   return (
     <div className="main-container">
       {isLoggedIn && ( <Header onLogout={handleLogout}  allocationNumber={allocationNumber} onAllocationChange={handleAllocationNumberChange} /> )}
-      {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleSubmit} customerInfo={customerInfo} orders={orders} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts} paymentGroups={paymentGroupsWithTotals} /> )}
+      {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleSubmit} customerInfo={customerInfo} orders={orders} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts} paymentGroups={paymentGroupsWithTotals} orderType="新規注文" /> )}
       {isSidebarOpen && ( <> <div className="overlay" onClick={() => setIsSidebarOpen(false)}></div> <div className="sidebar"> <div className="sidebar-header"> <h3>{isLoggedIn ? '店舗情報' : 'ログイン'}</h3> <button onClick={() => setIsSidebarOpen(false)} className="sidebar-close-btn"> <CloseIcon size={24} /> </button> </div> <SidebarInfoSection isLoggedIn={isLoggedIn} onLogin={handleLogin} allocationNumber={allocationNumber} onAllocationChange={handleAllocationNumberChange} receptionNumber={receptionNumber} onReceptionChange={handleReceptionNumberChange} /> </div> </> )}
       <div className="main-content">
         <div className="form-container">

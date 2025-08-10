@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ConfigurationProvider } from "./contexts/ConfigurationContext"; // ★ 1. この行を追加
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,7 +23,10 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        {/* ★ 2. childrenをProductProviderで囲む */}
+        <ConfigurationProvider> {/* ★ Provider名を変更 */}
+          {children}
+        </ConfigurationProvider>
       </body>
     </html>
   );

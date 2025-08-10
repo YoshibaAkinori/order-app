@@ -14,7 +14,8 @@ const ConfirmationModal = ({
   isPaymentOptionsOpen,
   SIDE_ORDERS_DB,
   receipts,
-  paymentGroups
+  paymentGroups,
+  orderType
 }) => {
   const handlePrint = () => {
     const printContent = document.getElementById('printable-area');
@@ -51,7 +52,8 @@ const ConfirmationModal = ({
         <div className="confirmation-content">
           <div id="printable-area">
             <div className="confirmation-document compact">
-              <header className="conf-doc-header"> <div className="conf-logo">松栄寿し</div> <div className="conf-doc-title"> <h1>注文確認書</h1> <p>受付番号: {receptionNumber || '-----'}</p> </div> </header>
+              <header className="conf-doc-header"> <div className="conf-logo">松栄寿し</div> <div className="conf-doc-title"> <h1>注文確認書</h1> <p>受付番号: {receptionNumber || '-----'}</p> {/* ★ 注文の種類を表示 */}
+                <p>注文の種類: {orderType || '新規注文'}</p></div> </header>
               <section className="conf-section"> <p className="conf-current-date">{new Date().toLocaleDateString('ja-JP')} 現在、以下の内容でご注文を受付けております。</p> </section>
               <section className="conf-section">
                 <h2 className="conf-order-title">お客様情報</h2>

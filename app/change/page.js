@@ -11,7 +11,7 @@ import { generateEmailHtml } from '../../utils/emailGenerator';
 const PRODUCTS = {
   kiwami: { name: '極', price: 3580, neta: ['まぐろ', 'サーモン', 'いくら', 'えび', 'いか', 'うに', 'あなご', 'たまご'] },
   takumi: { name: '匠', price: 3240, neta: ['まぐろ', 'サーモン', 'いくら', 'えび', 'いか', 'たまご', 'きゅうり巻き'] },
-  kei: { name: '恵', price: 2480, neta: ['まぐろ', 'サーモン', 'えび', 'いか', 'たまご', 'きゅうり巻き'] },
+  megumi: { name: '恵', price: 2480, neta: ['まぐろ', 'サーモン', 'えび', 'いか', 'たまご', 'きゅうり巻き'] },
   izumi: { name: '泉', price: 1890, neta: ['まぐろ', 'サーモン', 'えび', 'たまご', 'きゅうり巻き'] }
 };
 
@@ -23,41 +23,6 @@ const SIDE_ORDERS_DB = {
   'side-soup': { name: 'あら汁', price: 200 },
 };
 // --- ここまでマスターデータ ---
-
-// --- UI確認用の仮データ ---
-const MOCK_DB_DATA = {
-  receptionNumber: 'UK123',
-  allocationNumber: 'A',
-  customer: {
-    contactName: 'テスト顧客', email: 'test@example.com', tel: '090-1234-5678',
-    companyName: '株式会社テスト', department: '開発部', floorNumber: '3',
-    paymentMethod: '請求書払い', invoiceName: '株式会社テスト宛',
-    useCombinedPayment: true,
-  },
-  orders: [
-    {
-      id: 1, orderDate: '2025年12月25日', orderTime: '12:00',
-      deliveryAddress: 'テスト用住所1', deliveryMethod: '出前',
-      orderItems: [{ productKey: 'kei', quantity: 5 }],
-      sideOrders: [{ productKey: 'side-tea', quantity: 5 }],
-      netaChanges: {},
-    },
-    {
-      id: 2, orderDate: '2025年12月26日', orderTime: '18:00',
-      deliveryAddress: 'テスト用住所2', deliveryMethod: '東口受け取り',
-      orderItems: [{ productKey: 'izumi', quantity: 3 }],
-      sideOrders: [],
-      netaChanges: {},
-    }
-  ],
-  paymentGroups: [
-    { id: 11, paymentDate: '2025年12月25日', checkedOrderIds: { 1: true }, total: 13150 }
-  ],
-  receipts: [
-    { id: 21, documentType: '請求書', issueDate: '2025年12月25日', recipientName: '株式会社テスト宛', amount: 13150 }
-  ]
-};
-// --- ここまで仮データ ---
 
 const ChangeOrderPage = () => {
   const [searchId, setSearchId] = useState('');
@@ -74,40 +39,121 @@ const ChangeOrderPage = () => {
   const [isReceiptDetailsOpen, setIsReceiptDetailsOpen] = useState(false);
   const [manualReceipts, setManualReceipts] = useState([]);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
-  
-  const handleSearch = () => {
-    setIsLoading(true);
-    console.log(`「${searchId}」で検索します...`);
-    
-    setTimeout(() => {
-      setCustomerInfo(MOCK_DB_DATA.customer);
-      setReceptionNumber(MOCK_DB_DATA.receptionNumber);
-      setAllocationNumber(MOCK_DB_DATA.allocationNumber);
-      setPaymentGroups(MOCK_DB_DATA.paymentGroups);
-      setManualReceipts(MOCK_DB_DATA.receipts);
 
-      const loadedOrders = MOCK_DB_DATA.orders.map(mockOrder => {
+  const initialCustomerInfo = {
+    storeNumber: '', contactName: '', email: '', fax: '', tel: '', companyName: '', department: '',
+    paymentMethod: '', invoiceName: '',
+    useCombinedPayment: false,
+    floorNumber: '',
+    searchId: ''
+  };
+
+  const resetForm = () => {
+    setCustomerInfo(initialCustomerInfo);
+    setOrders([createNewOrder()]);
+    setIsPaymentOptionsOpen(false);
+    setIsCombinedPaymentSummaryOpen(false);
+    setPaymentGroups([]);
+    setIsReceiptDetailsOpen(false);
+    setManualReceipts([]);
+    setAllocationNumber('');
+    setReceptionNumber('');
+  };
+
+  const [originalOrderType, setOriginalOrderType] = useState('');
+
+  const handleSearch = async () => {
+    if (!searchId) {
+      alert('受付番号または注文番号を入力してください。');
+      return;
+    }
+    setIsLoading(true);
+    setIsDataLoaded(false);
+
+    // 入力されたIDが注文番号(6桁)か、受付番号(3桁)かを判断
+    let receptionNumToSearch = searchId;
+    let searchedOrderId = null; // 検索に使われた注文番号を記憶
+
+    if (searchId.length === 6) {
+      // 注文番号の場合、3~5文字目を抜き出して受付番号とする
+      receptionNumToSearch = searchId.substring(2, 5);
+      searchedOrderId = searchId;
+      console.log(`注文番号 ${searchId} から、受付番号 ${receptionNumToSearch} を抽出しました。`);
+    } else {
+      console.log(`受付番号 ${searchId} で検索します...`);
+    }
+
+    try {
+      // ★ あなたのAPI GatewayのURLに置き換えてください
+      const apiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/orders/${receptionNumToSearch}`;
+      
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '注文データの取得に失敗しました。');
+      }
+      const data = await response.json();
+      console.log('APIから取得したデータ:', data);
+
+      // --- 取得したデータをStateにセット ---
+      setCustomerInfo(data.customer);
+      setReceptionNumber(data.receptionNumber);
+      setAllocationNumber(data.allocationNumber);
+      setPaymentGroups(data.paymentGroups || []);
+      setManualReceipts(data.receipts || []);
+
+      // --- 注文リストを全商品とマージ & 順番を入れ替え ---
+      const loadedOrders = data.orders.map((dbOrder, index) => {
+        // 全商品リストをベースに、注文された商品の個数を反映
         const mergedOrderItems = Object.keys(PRODUCTS).map(productKey => {
           const masterProduct = PRODUCTS[productKey];
-          const orderedItem = mockOrder.orderItems.find(item => item.productKey === productKey);
+          // DBから読み込んだ注文アイテムの中から、同じproductKeyを持つものを探す
+          const orderedItem = (dbOrder.orderItems || []).find(item => item.productKey === productKey);
+          
           return {
-            productKey: productKey, name: masterProduct.name, unitPrice: masterProduct.price,
-            quantity: orderedItem ? orderedItem.quantity : 0,
+            productKey: productKey,
+            name: masterProduct.name,
+            unitPrice: masterProduct.price,
+            quantity: orderedItem ? orderedItem.quantity : 0, // 注文があればその個数、なければ0
           };
         });
-        return { ...mockOrder, orderItems: mergedOrderItems };
-      });
-      setOrders(loadedOrders);
 
-      if (MOCK_DB_DATA.paymentGroups.length > 0 || MOCK_DB_DATA.receipts.length > 0) {
+        return { 
+          ...dbOrder, 
+          orderItems: mergedOrderItems,
+          sequence: dbOrder.sequence || parseInt(dbOrder.id.slice(-1), 10) || index + 1
+        };
+      });
+
+      if ((data.paymentGroups && data.paymentGroups.length > 0) || (data.receipts && data.receipts.length > 0)) {
         setIsPaymentOptionsOpen(true);
-        if(MOCK_DB_DATA.paymentGroups.length > 0) setIsCombinedPaymentSummaryOpen(true);
-        if(MOCK_DB_DATA.receipts.length > 0) setIsReceiptDetailsOpen(true);
+        if(data.paymentGroups && data.paymentGroups.length > 0) setIsCombinedPaymentSummaryOpen(true);
+        if(data.receipts && data.receipts.length > 0) setIsReceiptDetailsOpen(true);
+      } else {
+        setIsPaymentOptionsOpen(false);
+        setIsCombinedPaymentSummaryOpen(false);
+        setIsReceiptDetailsOpen(false);
       }
-      
-      setIsLoading(false);
+
+      // もし注文番号で検索されていたら、その注文を一番上に持ってくる
+      if (searchedOrderId) {
+        loadedOrders.sort((a, b) => {
+          const aNum = generateOrderNumber(a, data.receptionNumber, data.orders.findIndex(o => o.id === a.id));
+          const bNum = generateOrderNumber(b, data.receptionNumber, data.orders.findIndex(o => o.id === b.id));
+          if (aNum === searchedOrderId) return -1;
+          if (bNum === searchedOrderId) return 1;
+          return 0;
+        });
+      }
+
+      setOrders(loadedOrders);
       setIsDataLoaded(true);
-    }, 500);
+      setOriginalOrderType(data.orderType || '不明');
+    } catch (error) {
+      alert(`エラー: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const handleCustomerInfoChange = (e) => {
@@ -141,8 +187,15 @@ const ChangeOrderPage = () => {
   };
   const handleToggleCombinedPayment = () => setIsCombinedPaymentSummaryOpen(prev => !prev);
   const handleToggleReceiptDetails = () => setIsReceiptDetailsOpen(prev => !prev);
-  const addPaymentGroup = () => setPaymentGroups(prev => [...prev, { id: Date.now(), paymentDate: '', checkedOrderIds: {} }]);
-  const removePaymentGroup = (groupId) => setPaymentGroups(prev => prev.filter(g => g.id !== groupId));
+  const addPaymentGroup = () => {
+    const newGroup = { id: Date.now(), paymentDate: '', checkedOrderIds: {} };
+    setPaymentGroups(prev => [...prev, newGroup]);
+    // 支払いグループを追加したら、領収書の詳細を自動的に開く
+    setIsReceiptDetailsOpen(true); 
+  };
+const removePaymentGroup = (groupId) => {
+    setPaymentGroups(prev => prev.filter(group => group.id !== groupId));
+  };
   const updatePaymentGroup = (groupId, field, value) => setPaymentGroups(prev => prev.map(g => g.id === groupId ? { ...g, [field]: value } : g));
   const handleGroupOrderCheck = (groupId, orderId) => {
     setPaymentGroups(prevGroups => prevGroups.map(group => {
@@ -154,6 +207,7 @@ const ChangeOrderPage = () => {
       return group;
     }));
   };
+  const isReceiptAutomated = paymentGroups.length > 0;
   const addReceipt = () => setManualReceipts(prev => [...prev, { id: Date.now(), issueDate: '', recipientName: '', amount: '', documentType: '領収書' }]);
   const removeReceipt = (receiptId) => setManualReceipts(prev => prev.filter(r => r.id !== receiptId));
   const updateReceipt = (receiptId, field, value) => setManualReceipts(prev => prev.map(r => r.id === receiptId ? { ...r, [field]: value } : r));
@@ -171,7 +225,6 @@ const ChangeOrderPage = () => {
       return order;
     }));
   };
-
   const updateSideOrderQuantity = (orderId, productKey, quantity) => {
     const finalQuantity = parseInt(String(quantity).replace(/[０-９]/g, char => String.fromCharCode(char.charCodeAt(0) - 0xFEE0)), 10) || 0;
     setOrders(prevOrders => prevOrders.map(order => {
@@ -205,21 +258,78 @@ const ChangeOrderPage = () => {
       return { ...group, total: groupTotal };
     });
   }, [paymentGroups, orders]);
-  
+
+  React.useEffect(() => {
+    // 支払いグループが1つもなければ、何もしない（手動モード）
+    if (paymentGroups.length === 0) {
+      // 念のため、自動生成された可能性のあるデータをクリアする
+      if (manualReceipts.some(r => r.groupId)) {
+        setManualReceipts([]);
+      }
+      return;
+    }
+
+    const newManualReceipts = paymentGroupsWithTotals.map(group => {
+      // 支払い方法に基づいて書類種別を決定
+      const docType = getDocumentType(customerInfo.paymentMethod) || '領収書';
+      
+      return {
+        id: group.id, // IDをグループと一致させる
+        groupId: group.id, // グループとの関連付けID
+        documentType: docType,
+        issueDate: group.paymentDate, // 支払日を発行日とする
+        recipientName: customerInfo.invoiceName, // 宛名は顧客情報から取得
+        amount: group.total, // 金額はグループの合計金額
+      };
+    });
+
+    setManualReceipts(newManualReceipts);
+
+  }, [paymentGroupsWithTotals, customerInfo.invoiceName, customerInfo.paymentMethod]);
+
   const uniqueOrderDates = [...new Set(orders.map(o => o.orderDate).filter(Boolean))];
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
+    // ★ あなたのAPI GatewayのURLに置き換えてください
+    const updateApiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/orders/${receptionNumber}`;
+
     const updatedData = {
       customer: customerInfo,
       orders,
       receptionNumber,
       allocationNumber,
       paymentGroups: paymentGroupsWithTotals,
-      receipts: manualReceipts
+      receipts: manualReceipts,
+      SIDE_ORDERS_DB, // Lambda側で単価を引くために追加
+      orderType: '変更',
     };
+    
     console.log("更新するデータ:", updatedData);
-    alert('注文内容を更新しました。（実際には更新APIを呼び出します）');
-    setIsConfirmationOpen(false);
+    
+    try {
+      const response = await fetch(updateApiUrl, {
+        method: 'PUT', // ★ 更新なのでPUTメソッドを使用
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '注文の更新に失敗しました。');
+      }
+
+      const result = await response.json();
+      console.log('APIからの成功応答:', result);
+
+      alert('注文内容を正常に更新しました。');
+      setIsConfirmationOpen(false);
+      resetForm();
+      // ここではフォームのリセットはしない
+
+    } catch (error) {
+      console.error('注文の更新中にエラーが発生しました:', error);
+      alert(`エラー: ${error.message}`);
+    }
   };
   
   const getDocumentType = (paymentMethod) => {
@@ -244,6 +354,15 @@ const ChangeOrderPage = () => {
   }, [orders, customerInfo.paymentMethod, customerInfo.invoiceName, isPaymentOptionsOpen]);
   
   const finalReceipts = manualReceipts.length > 0 ? manualReceipts : autoGeneratedReceipts;
+  
+  const createNewOrder = () => ({
+    id: Date.now(), orderDate: '', orderTime: '', deliveryAddress: '', deliveryMethod: '',
+    hasNetaChange: false,
+    netaChangeDetails: '', 
+    netaChanges: {},
+    sideOrders: [],
+    orderItems: Object.keys(PRODUCTS).map(key => ({ productKey: key, name: PRODUCTS[key].name, unitPrice: PRODUCTS[key].price, quantity: 0, notes: '' }))
+  });
 
   return (
     <div className="main-container">
@@ -268,6 +387,7 @@ const ChangeOrderPage = () => {
           SIDE_ORDERS_DB={SIDE_ORDERS_DB}
           receipts={finalReceipts}
           paymentGroups={paymentGroupsWithTotals}
+          orderType="変更"
         />
       )}
 
@@ -275,7 +395,8 @@ const ChangeOrderPage = () => {
         <div className="form-container">
           <div className="form-header"> <h1 className="form-title">注文変更</h1> </div>
           <div className="search-container">
-            <input type="text" value={searchId} onChange={(e) => setSearchId(e.target.value)} className="search-input" placeholder="受付番号を入力してください" />
+            {/* ★★★ ここからが修正箇所2: placeholderの変更 ★★★ */}
+            <input type="text" value={searchId} onChange={(e) => setSearchId(e.target.value.toUpperCase())} className="search-input" placeholder="受付番号 (A2A) または注文番号 (25A2A1) を入力" />
             <button onClick={handleSearch} className="search-button" disabled={isLoading}> <Search size={20} /> {isLoading ? '検索中...' : '検索'} </button>
           </div>
           {isDataLoaded && (
@@ -323,7 +444,7 @@ const ChangeOrderPage = () => {
                                 {orders.map((order, orderIndex) => (
                                   <div key={order.id} className="order-checklist-item">
                                     <input type="checkbox" id={`order-check-${group.id}-${order.id}`} checked={!!group.checkedOrderIds[order.id]} onChange={() => handleGroupOrderCheck(group.id, order.id)} />
-                                    <label htmlFor={`order-check-${group.id}-${order.id}`}> {generateOrderNumber(order, receptionNumber, orderIndex)} ({order.orderDate || '日付未定'}) - ¥{calculateOrderTotal(order).toLocaleString()} </label>
+                                    <label htmlFor={`order-check-${group.id}-${order.id}`}> {generateOrderNumber(order, receptionNumber)} ({order.orderDate || '日付未定'}) - ¥{calculateOrderTotal(order).toLocaleString()} </label>
                                   </div>
                                 ))}
                               </div>
@@ -364,11 +485,11 @@ const ChangeOrderPage = () => {
                                 </div>
                                 <div className="combined-payment-field">
                                   <label className="combined-payment-label">宛名</label>
-                                  <input type="text" className="combined-payment-input" placeholder="株式会社○○○" value={receipt.recipientName} onChange={(e) => updateReceipt(receipt.id, 'recipientName', e.target.value)} />
+                                  <input type="text" className="payment-info-input" placeholder="株式会社○○○" value={receipt.recipientName} onChange={(e) => updateReceipt(receipt.id, 'recipientName', e.target.value)} />
                                 </div>
                                 <div className="combined-payment-field">
                                   <label className="combined-payment-label">金額</label>
-                                  <input type="number" className="combined-payment-input" placeholder="0" value={receipt.amount} onChange={(e) => updateReceipt(receipt.id, 'amount', e.target.value)} />
+                                  <input type="number" className="payment-info-input" placeholder="0" value={receipt.amount} onChange={(e) => updateReceipt(receipt.id, 'amount', e.target.value)} />
                                 </div>
                               </div>
                             </div>
