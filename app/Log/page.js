@@ -1,12 +1,15 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Header from '../../components/Header'; // 既存のヘッダーを再利用
 import LogEntry from '../../components/LogEntry'; // ★これから作成する差分表示コンポーネント
+import { useConfiguration } from '../contexts/ConfigurationContext';
 
 const ChangeLogPage = () => {
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { configuration, selectedYear, changeYear } = useConfiguration();
+  const ALLOCATION_MASTER = useMemo(() => (configuration?.allocationMaster || {}), [configuration]);
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -31,7 +34,12 @@ const ChangeLogPage = () => {
 
   return (
     <div className="main-container">
-      <Header />
+      <Header  
+        selectedYear={selectedYear}
+        changeYear={changeYear}
+        onAllocationChange={(e) => handleAllocationChange(e.target.value)}
+        ALLOCATION_MASTER={ALLOCATION_MASTER}
+      /> 
       <div className="main-content">
         <div className="form-container">
           <div className="form-header">

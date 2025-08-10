@@ -1,10 +1,22 @@
+"use client";
 import React from 'react';
 
-// ★ receptionNumberとallocationNumberをpropsで受け取る
-const Header = ({ onLogout, receptionNumber, onReceptionChange, allocationNumber, onAllocationChange }) => {
+// ★ propsに selectedYear と changeYear を追加
+const Header = ({ onLogout, allocationNumber, onAllocationChange, ALLOCATION_MASTER, selectedYear, changeYear }) => {
+
+  // ★ 年選択肢を動的に生成するロジック
+  const generateYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 2; i <= currentYear + 2; i++) {
+      years.push(i);
+    }
+    return years;
+  };
+  const yearOptions = generateYearOptions();
+
   return (
     <header className="app-header">
-      {/* 1段目 */}
       <div className="header-main-row">
         <nav className="header-nav">
           <a href="./" className="header-link">注文入力</a>
@@ -19,19 +31,23 @@ const Header = ({ onLogout, receptionNumber, onReceptionChange, allocationNumber
           ログアウト
         </button>
       </div>
-      {/* 2段目 (入力欄に変更) */}
-      <div className="header-info-row">
-        <div className="header-input-group">
-          <label className="header-label">割振番号:</label>
-          <input
-            type="text"
-            className="header-input"
-            value={allocationNumber}
-            onChange={onAllocationChange}
-            maxLength="1"
-          />
+      <div className="header-controls">
+        {/* ★ 年選択のドロップダウンを追加 */}
+        <div className="header-control-item">
+          <label htmlFor="year-select">設定年: </label>
+          <select
+            id="year-select"
+            value={selectedYear || ''}
+            onChange={(e) => changeYear(e.target.value)}
+            className="header-select"
+          >
+            <option value="" disabled>選択...</option>
+            {yearOptions.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
         </div>
-      </div>
+    </div>
     </header>
   );
 };

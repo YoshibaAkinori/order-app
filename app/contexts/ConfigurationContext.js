@@ -6,51 +6,49 @@ const ConfigurationContext = createContext();
 const EMPTY_CONFIG_TEMPLATE = {
   products: {},
   specialMenus: {},
-  sideMenus: {}, // sideMenusもテンプレートに含めるとより安全
+  sideMenus: {},
   deliveryDates: [],
   deliveryTimes: [],
+  allocationMaster: {},
 };
 
 export const ConfigurationProvider = ({ children }) => {
   const [configuration, setConfiguration] = useState(null);
   const [netaMaster, setNetaMaster] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // ★ 初期値はfalseが良い
   const [error, setError] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(null);
+
+  const [selectedYear, setSelectedYear] = useState(() => {
+    // ページロード時にlocalStorageから前回の値を取得
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('selectedYear') || null;
+    }
+    return null;
+  });
 
   const fetchConfiguration = async (year) => {
     setLoading(true);
     setError(null);
-
     try {
-      const [configResponse, netaResponse] = await Promise.allSettled([
+      const [configResponse, netaResponse] = await Promise.all([
         fetch(`https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/configurations/${year}`),
         fetch(`https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/neta-master`)
       ]);
 
-      // ★★★ ここからが修正箇所 ★★★
-      // neta-masterデータの処理
-      if (netaResponse.status === 'fulfilled' && netaResponse.value.ok) {
-        const netaData = await netaResponse.value.json();
-        // ★ データを取得した直後に、ここでソート処理を行う
+      if (netaResponse.ok) {
+        const netaData = await netaResponse.json();
         const sortedNeta = netaData.sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
         setNetaMaster(sortedNeta);
-      } else if (netaResponse.status === 'fulfilled' && netaResponse.value.status === 404) {
-        // 404の場合は、エラーではなく「空」の状態として扱う
-        console.log("ネタマスタが見つかりません。新規作成モードになります。");
-        setNetaMaster([]); // 空の配列をセット
+      } else if (netaResponse.status === 404) {
+        setNetaMaster([]);
       } else {
-        // 404以外の通信エラーやサーバーエラー
         throw new Error('ネタマスタの取得に失敗しました。');
       }
-      // ★★★ ここまでが修正箇所 ★★★
       
-      // configurationsデータの処理 (こちらは変更なし)
-      if (configResponse.status === 'fulfilled' && configResponse.value.ok) {
-        const configData = await configResponse.value.json();
+      if (configResponse.ok) {
+        const configData = await configResponse.json();
         setConfiguration(configData);
-      } else if (configResponse.status === 'fulfilled' && configResponse.value.status === 404) {
-        console.log(`${year}年のデータが見つからなかったので、新規作成モードに入ります。`);
+      } else if (configResponse.status === 404) {
         setConfiguration({ ...EMPTY_CONFIG_TEMPLATE, configYear: null });
       } else {
         throw new Error('設定データの取得に失敗しました。');
@@ -72,9 +70,14 @@ export const ConfigurationProvider = ({ children }) => {
   }, [selectedYear]);
 
   const changeYear = (year) => {
+    if (typeof window !== 'undefined') {
+      // localStorageに新しい値を保存
+      localStorage.setItem('selectedYear', year);
+    }
     setSelectedYear(year);
   };
   
+  // ★★★ この行に `fetchConfiguration` を追加 ★★★
   const value = { configuration, loading, error, selectedYear, changeYear, fetchConfiguration, netaMaster };
 
   return (

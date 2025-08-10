@@ -1,6 +1,30 @@
-import React from 'react';
+"use client";
+import React, { useState, useEffect } from 'react';
 
-const CustomerInfoSection = ({ formData, handleInputChange }) => {
+
+const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, onLocationSelect, deliveryAddress }) => {
+  const [selectedValue, setSelectedValue] = useState('');
+
+  useEffect(() => {
+    // formData.addressから現在の選択値を逆引きして設定
+    const currentKey = Object.keys(allocationMaster).find(key => allocationMaster[key].address === formData.address);
+    if (currentKey) {
+      setSelectedValue(currentKey);
+    } else if (formData.address) {
+      // 登録済みの住所に一致しないが、住所が入力されている場合は「その他」を選択状態にする
+      setSelectedValue('その他');
+    } else {
+      setSelectedValue('');
+    }
+  }, [formData.address, allocationMaster]);
+  
+  const handleSelectChange = (e) => {
+    const prefix = e.target.value;
+    setSelectedValue(prefix);
+    onLocationSelect(prefix); // 親コンポーネントに変更を通知
+  };
+  const isAddressManuallyEditable = selectedValue === 'その他';
+
   return (
     <div className="customer-info-section">
       <h2 className="customer-info-title">発注者の情報</h2>
@@ -32,13 +56,26 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
           </div>
           <div className="customer-info-field">
             <label className="customer-info-label">
-              法人名 <span className="required-mark">*</span>
+              法人名・部署名 <span className="required-mark">*</span>
             </label>
-            <input type="text" name="companyName" value={formData.companyName} onChange={handleInputChange} className="customer-info-input" placeholder="株式会社○○○" />
+            <input type="text" name="companyName" value={formData.companyName} onChange={handleInputChange} className="customer-info-input" placeholder="県庁 〇〇課" />
           </div>
+          {/* ★ 2. 割り当て場所を選択するドロップダウンを追加 */}
           <div className="customer-info-field">
-            <label className="customer-info-label">部署名</label>
-            <input type="text" name="department" value={formData.department} onChange={handleInputChange} className="customer-info-input" placeholder="営業部" />
+            <label className="customer-info-label">住所</label>
+            <select
+              onChange={(e) => onLocationSelect(e.target.value)} // ★ 呼び出す関数名を変更
+              className="customer-info-input"
+              // ★ valueを追加して、選択が反映されるようにする
+              value={Object.keys(allocationMaster).find(key => allocationMaster[key].address === formData.address) || ''}
+            >
+              <option value="">-- 選択してください --</option>
+              {Object.keys(allocationMaster || {}).map(prefix => (
+                <option key={prefix} value={prefix}>
+                  {allocationMaster[prefix].address}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="customer-info-field">
             <label className="customer-info-label">階数</label>
@@ -49,6 +86,16 @@ const CustomerInfoSection = ({ formData, handleInputChange }) => {
               onChange={handleInputChange}
               className="customer-info-input"
               placeholder="例: 2"
+            />
+          </div>
+          <div className="customer-info-field">
+            <label className="customer-info-label">お届け先住所詳細</label>
+            <textarea 
+              name="deliveryAddressDetail" // 名前は他と重複しないように変更
+              value={deliveryAddress} // ★ propsから受け取った値を表示
+              rows="3" 
+              className="customer-info-input" // 他の入力欄とスタイルを合わせる
+              readOnly // ★ この欄は自動入力専用とし、直接編集はさせない
             />
           </div>
         </div>

@@ -439,10 +439,12 @@ export default function ProductAdminPage() {
                               .map(netaItem => `${netaItem.name} × ${netaItem.quantity}`)
                               .join(', ')}
                             </td>
-                            <div className="action-buttons">
-                              <button onClick={() => handleEditProduct(key, 'products')} className="edit-button">編集</button>
-                              <button onClick={() => handleDeleteProduct(key, 'products')} className="delete-button">削除</button>
-                            </div>
+                            <td>
+                              <div className="action-buttons">
+                                <button onClick={() => handleEditProduct(key, 'products')} className="edit-button">編集</button>
+                                <button onClick={() => handleDeleteProduct(key, 'products')} className="delete-button">削除</button>
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
@@ -483,10 +485,13 @@ export default function ProductAdminPage() {
                             .map(netaItem => `${netaItem.name} × ${netaItem.quantity}`)
                             .join(', ')}
                           </td>
-                          <div className="action-buttons">
+                          <td>
+                            <div className="action-buttons">
                               <button onClick={() => handleEditProduct(key, 'specialMenus')} className="edit-button">編集</button>
                               <button onClick={() => handleDeleteProduct(key, 'specialMenus')} className="delete-button">削除</button>
-                          </div>
+                            </div>
+                          </td>
+                          
                         </tr>
                       );
                     })}

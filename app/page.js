@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useConfiguration } from './contexts/ConfigurationContext'; // ★ 1. パスを修正
 import { Send, Plus, X as CloseIcon, Trash2 } from 'lucide-react';
 import CustomerInfoSection from '../components/CustomerInfoSection';
 import SingleOrderSection from '../components/SingleOrderSection';
@@ -8,23 +9,15 @@ import Header from '../components/Header';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { generateEmailHtml } from '../utils/emailGenerator';
 
-
-const PRODUCTS = {
-  kiwami: { name: '極', price: 3580, neta: ['まぐろ', 'サーモン', 'いくら', 'えび', 'いか', 'うに', 'あなご', 'たまご'] },
-  takumi: { name: '匠', price: 3240, neta: ['まぐろ', 'サーモン', 'いくら', 'えび', 'いか', 'たまご', 'きゅうり巻き'] },
-  megumi: { name: '恵', price: 2480, neta: ['まぐろ', 'サーモン', 'えび', 'いか', 'たまご', 'きゅうり巻き'] },
-  izumi: { name: '泉', price: 1890, neta: ['まぐろ', 'サーモン', 'えび', 'たまご', 'きゅうり巻き'] }
-};
-
-const SIDE_ORDERS_DB = {
-  'side-tuna': { name: '単品 まぐろ', price: 300 },
-  'side-salmon': { name: '単品 サーモン', price: 250 },
-  'side-tamago': { name: '単品 たまご', price: 150 },
-  'side-tea': { name: 'お茶（ペットボトル）', price: 150 },
-  'side-soup': { name: 'あら汁', price: 200 },
-};
-
 const OrderForm = () => {
+  const { configuration, loading, error, selectedYear, changeYear } = useConfiguration();
+
+  const PRODUCTS = useMemo(() => (configuration?.products || {}), [configuration]);
+  const SIDE_ORDERS_DB = useMemo(() => (configuration?.specialMenus || {}), [configuration]);
+  const ALLOCATION_MASTER = useMemo(() => (configuration?.allocationMaster || {}), [configuration]);
+  const deliveryDates = useMemo(() => (configuration?.deliveryDates || []), [configuration]);
+  const deliveryTimes = useMemo(() => (configuration?.deliveryTimes || []), [configuration]);
+  
   const initialCustomerInfo = {
     storeNumber: '', contactName: '', email: '', fax: '', tel: '', companyName: '', department: '',
     paymentMethod: '', invoiceName: '',
@@ -32,17 +25,26 @@ const OrderForm = () => {
     floorNumber: ''
   };
 
-  const createNewOrder = () => ({
-    id: Date.now(), orderDate: '', orderTime: '', deliveryAddress: '', deliveryMethod: '',
-    hasNetaChange: false,
-    netaChangeDetails: '', 
-    netaChanges: {},
-    sideOrders: [],
-    orderItems: Object.keys(PRODUCTS).map(key => ({ productKey: key, name: PRODUCTS[key].name, unitPrice: PRODUCTS[key].price, quantity: 0, notes: '' }))
-  });
+  // createNewOrderはPRODUCTSに依存するため、useMemoでPRODUCTSが更新されるたびに再生成
+  const createNewOrder = useMemo(() => {
+    return () => ({
+      id: Date.now(), orderDate: '', orderTime: '', deliveryAddress: '', deliveryMethod: '',
+      hasNetaChange: false,
+      netaChangeDetails: '', 
+      netaChanges: {},
+      sideOrders: [],
+      orderItems: Object.keys(PRODUCTS).map(key => ({ 
+        productKey: key, 
+        name: PRODUCTS[key].name, 
+        unitPrice: PRODUCTS[key].price, 
+        quantity: 0, 
+        notes: '' 
+      }))
+    });
+  }, [PRODUCTS]);
 
   const [customerInfo, setCustomerInfo] = useState(initialCustomerInfo);
-  const [orders, setOrders] = useState([createNewOrder()]);
+  const [orders, setOrders] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPaymentOptionsOpen, setIsPaymentOptionsOpen] = useState(false);
   const [isCombinedPaymentSummaryOpen, setIsCombinedPaymentSummaryOpen] = useState(false);
@@ -53,6 +55,25 @@ const OrderForm = () => {
   const [paymentGroups, setPaymentGroups] = useState([]);
   const [isReceiptDetailsOpen, setIsReceiptDetailsOpen] = useState(false);
   const [manualReceipts, setManualReceipts] = useState([]);
+
+  useEffect(() => {
+    if (!selectedYear) {
+      changeYear(new Date().getFullYear());
+    }
+  }, [selectedYear, changeYear]);
+  
+ useEffect(() => {
+    if (configuration && orders.length === 0) {
+      setOrders([createNewOrder()]);
+    }
+  }, [configuration, createNewOrder]);
+
+  const getDocumentType = (paymentMethod) => {
+    if (['現金', 'クレジットカード'].includes(paymentMethod)) return '領収書';
+    if (['銀行振込', '請求書払い'].includes(paymentMethod)) return '請求書';
+    return '';
+  };
+
 
   const resetForm = () => {
     setCustomerInfo(initialCustomerInfo);
@@ -73,7 +94,21 @@ const OrderForm = () => {
     setReceptionNumber('');
   };
   const handleReceptionNumberChange = (e) => setReceptionNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase());
-  const handleAllocationNumberChange = (e) => setAllocationNumber(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase());
+  
+  const handleAllocationChange = (prefix) => {
+    setAllocationNumber(prefix);
+    const allocationData = ALLOCATION_MASTER[prefix];
+    if (allocationData) {
+      if (orders.length > 0 && !orders[0].deliveryAddress) {
+        const updatedOrders = [...orders];
+        updatedOrders[0].deliveryAddress = allocationData.address;
+        setOrders(updatedOrders);
+      }
+      if (!customerInfo.tel) {
+        setCustomerInfo(prev => ({ ...prev, tel: allocationData.tel }));
+      }
+    }
+  };
   
   const handleCustomerInfoChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -85,7 +120,7 @@ const OrderForm = () => {
   const deleteOrder = (orderId) => setOrders(prev => prev.filter(o => o.id !== orderId));
   
   const calculateOrderTotal = (order) => {
-    const mainTotal = order.orderItems.reduce((total, item) => total + ((parseFloat(item.unitPrice) || 0) * (parseInt(item.quantity) || 0)), 0);
+    const mainTotal = (order.orderItems || []).reduce((total, item) => total + ((parseFloat(item.unitPrice) || 0) * (parseInt(item.quantity) || 0)), 0);
     const sideTotal = (order.sideOrders || []).reduce((total, item) => {
       const price = SIDE_ORDERS_DB[item.productKey]?.price || 0;
       return total + (price * (parseInt(item.quantity) || 0));
@@ -138,18 +173,12 @@ const OrderForm = () => {
   };
   
   const addPaymentGroup = () => {
-  const newGroup = { id: Date.now(), paymentDate: '', checkedOrderIds: {} };
-  setPaymentGroups(prev => [...prev, newGroup]);
-  // 支払いグループを追加したら、領収書の詳細を自動的に開く
-  setIsReceiptDetailsOpen(true); 
+    const newGroup = { id: Date.now(), paymentDate: '', checkedOrderIds: {} };
+    setPaymentGroups(prev => [...prev, newGroup]);
+    setIsReceiptDetailsOpen(true); 
   };
   const removePaymentGroup = (groupId) => {
-  setPaymentGroups(prev => prev.filter(group => group.id !== groupId));
-  // ★★★【注意】★★★
-  // 上記で追加した useEffect が paymentGroups の変更を検知して
-  // 自動で manualReceipts を更新するため、ここでの個別削除は不要です。
-  // useEffect がなければ、以下の行が必要でした。
-  // setManualReceipts(prev => prev.filter(r => r.groupId !== groupId));
+    setPaymentGroups(prev => prev.filter(group => group.id !== groupId));
   };
   const updatePaymentGroup = (groupId, field, value) => {
     setPaymentGroups(prev => prev.map(group => group.id === groupId ? { ...group, [field]: value } : group));
@@ -176,37 +205,80 @@ const OrderForm = () => {
       }, 0);
       return { ...group, total: groupTotal };
     });
-  }, [paymentGroups, orders]);
+  }, [paymentGroups, orders, calculateOrderTotal]);
 
-  React.useEffect(() => {
-    // 支払いグループが1つもなければ、何もしない（手動モード）
+  useEffect(() => {
     if (paymentGroups.length === 0) {
-      // 念のため、自動生成された可能性のあるデータをクリアする
       if (manualReceipts.some(r => r.groupId)) {
         setManualReceipts([]);
       }
       return;
     }
-
     const newManualReceipts = paymentGroupsWithTotals.map(group => {
-      // 支払い方法に基づいて書類種別を決定
       const docType = getDocumentType(customerInfo.paymentMethod) || '領収書';
-      
       return {
-        id: group.id, // IDをグループと一致させる
-        groupId: group.id, // グループとの関連付けID
+        id: group.id,
+        groupId: group.id,
         documentType: docType,
-        issueDate: group.paymentDate, // 支払日を発行日とする
-        recipientName: customerInfo.invoiceName, // 宛名は顧客情報から取得
-        amount: group.total, // 金額はグループの合計金額
+        issueDate: group.paymentDate,
+        recipientName: customerInfo.invoiceName,
+        amount: group.total,
       };
     });
 
     setManualReceipts(newManualReceipts);
-  }, [paymentGroupsWithTotals, customerInfo.invoiceName, customerInfo.paymentMethod]);
+  }, [paymentGroupsWithTotals, customerInfo.paymentMethod, customerInfo.invoiceName, getDocumentType]);
+  
+  useEffect(() => {
+    // 顧客情報の住所(address)または階数(floorNumber)が変更されたら実行
+    if (customerInfo.address && orders.length > 0) {
+      // 階数が入力されていれば、住所と結合する
+      const fullAddress = customerInfo.floorNumber
+        ? `${customerInfo.address} ${customerInfo.floorNumber}F`
+        : customerInfo.address;
+      // 最初の注文のお届け先住所を更新する
+      const updatedOrders = [...orders];
+      if (updatedOrders[0].deliveryAddress !== fullAddress) {
+        updatedOrders[0].deliveryAddress = fullAddress;
+        setOrders(updatedOrders);
+      }
+    }
+  }, [customerInfo.address, customerInfo.floorNumber, orders]); 
 
+  const handleAllocationSelectForCustomer = (prefix) => {
+    // ...
+    const allocationData = ALLOCATION_MASTER[prefix];
+    if (allocationData) {
+      setCustomerInfo(prev => ({
+        ...prev,
+        address: allocationData.address || prev.address,
+      }));
+    }
+  };
+
+  const handleLocationSelect = (prefix) => {
+    setAllocationNumber(prefix); // ★ 割振番号のstateを更新
+
+    if (!prefix) return;
+    
+    const allocationData = ALLOCATION_MASTER[prefix];
+    if (allocationData) {
+      // 顧客情報の自動入力
+      setCustomerInfo(prev => ({
+        ...prev,
+        companyName: allocationData.locationName || prev.companyName,
+        address: allocationData.address || prev.address,
+      }));
+      // 最初の注文の配送先住所も自動入力
+      if (orders.length > 0 && !orders[0].deliveryAddress) {
+        const updatedOrders = [...orders];
+        updatedOrders[0].deliveryAddress = allocationData.address;
+        setOrders(updatedOrders);
+      }
+    }
+  };
+ 
   const handleToggleReceiptDetails = () => setIsReceiptDetailsOpen(prev => !prev);
-  const isReceiptAutomated = paymentGroups.length > 0;
   const addReceipt = () => {
     const newReceipt = { id: Date.now(), issueDate: '', recipientName: '', amount: '', documentType: '領収書' };
     setManualReceipts(prev => [...prev, newReceipt]);
@@ -214,12 +286,6 @@ const OrderForm = () => {
   const removeReceipt = (receiptId) => setManualReceipts(prev => prev.filter(r => r.id !== receiptId));
   const updateReceipt = (receiptId, field, value) => {
     setManualReceipts(prev => prev.map(r => r.id === receiptId ? { ...r, [field]: value } : r));
-  };
-
-  const getDocumentType = (paymentMethod) => {
-    if (['現金', 'クレジットカード'].includes(paymentMethod)) return '領収書';
-    if (['銀行振込', '請求書払い'].includes(paymentMethod)) return '請求書';
-    return '';
   };
   
   const autoGeneratedReceipts = useMemo(() => {
@@ -235,24 +301,17 @@ const OrderForm = () => {
         }));
     }
     return [];
-  }, [orders, customerInfo.paymentMethod, customerInfo.invoiceName, isPaymentOptionsOpen]);
+  }, [orders, customerInfo.paymentMethod, customerInfo.invoiceName, isPaymentOptionsOpen, calculateOrderTotal, getDocumentType]);
   
   const finalReceipts = manualReceipts.length > 0 ? manualReceipts : autoGeneratedReceipts;
 
   const generateOrderNumber = (order, receptionNum, index) => {
-    // 受付番号がまだ生成されていない場合は仮表示
     if (!receptionNum || receptionNum === 'エラー') {
       return '---';
     }
-    
-    // 日付部分 (2桁)
     const dateMatch = order.orderDate.match(/(\d{1,2})日/);
     const day = (dateMatch && dateMatch[1]) ? dateMatch[1].padStart(2, '0') : '00';
-    
-    // 注文連番 (#1 → 1)
     const orderSequence = (index + 1).toString();
-    
-    // 結合して返す (例: 25A2A1)
     return `${day}${receptionNum}${orderSequence}`;
   };
 
@@ -277,8 +336,7 @@ const OrderForm = () => {
       setReceptionNumber('エラー');
     }
   };
-  
-  const handleSubmit = async () => {
+    const handleSubmit = async () => {
     // ★★★ あなたのAPI GatewayのURLをここに貼り付けてください ★★★
     const saveOrderApiUrl = 'https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/orders';
     const sendEmailApiUrl = 'https://<あなたのAPI GatewayのID>.execute-api.ap-northeast-1.amazonaws.com/send-email'; // メール用API（仮）
@@ -358,17 +416,35 @@ const OrderForm = () => {
   };
 
   const uniqueOrderDates = [...new Set(orders.map(o => o.orderDate).filter(Boolean))];
+  
+  if (loading) return <h4>設定データを読み込んでいます...</h4>;
+  if (error) return <h4 style={{color: 'red'}}>エラー: {error}</h4>;
+  if (!configuration) return <h4>表示する設定年を選択してください。</h4>;
 
   return (
     <div className="main-container">
-      {isLoggedIn && ( <Header onLogout={handleLogout}  allocationNumber={allocationNumber} onAllocationChange={handleAllocationNumberChange} /> )}
+      {isLoggedIn && ( <Header 
+        selectedYear={selectedYear}
+        changeYear={changeYear}
+        onLogout={handleLogout}  
+        allocationNumber={allocationNumber} 
+        onAllocationChange={(e) => handleAllocationChange(e.target.value)}
+        ALLOCATION_MASTER={ALLOCATION_MASTER}
+      /> )}
       {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleSubmit} customerInfo={customerInfo} orders={orders} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts} paymentGroups={paymentGroupsWithTotals} orderType="新規注文" /> )}
       {isSidebarOpen && ( <> <div className="overlay" onClick={() => setIsSidebarOpen(false)}></div> <div className="sidebar"> <div className="sidebar-header"> <h3>{isLoggedIn ? '店舗情報' : 'ログイン'}</h3> <button onClick={() => setIsSidebarOpen(false)} className="sidebar-close-btn"> <CloseIcon size={24} /> </button> </div> <SidebarInfoSection isLoggedIn={isLoggedIn} onLogin={handleLogin} allocationNumber={allocationNumber} onAllocationChange={handleAllocationNumberChange} receptionNumber={receptionNumber} onReceptionChange={handleReceptionNumberChange} /> </div> </> )}
       <div className="main-content">
         <div className="form-container">
           <div className="form-header"> <h1 className="form-title">注文フォーム</h1> <button onClick={() => setIsSidebarOpen(true)} className="hamburger-menu-btn" title="ログイン/店舗情報"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"> <line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /> </svg> </button> </div>
           <div className="order-detail-container">
-            <CustomerInfoSection formData={customerInfo} handleInputChange={handleCustomerInfoChange} />
+            <CustomerInfoSection 
+              formData={customerInfo} 
+              handleInputChange={handleCustomerInfoChange} 
+              allocationMaster={ALLOCATION_MASTER}
+              onAllocationSelect={handleAllocationSelectForCustomer}
+              onLocationSelect={handleLocationSelect} 
+              deliveryAddress={orders[0]?.deliveryAddress || ''}
+            />
             {orders.map((order, index) => {
               const orderNumberDisplay = generateOrderNumber(order, receptionNumber, index);
               return (
@@ -386,10 +462,14 @@ const OrderForm = () => {
                   addSideOrder={addSideOrder}
                   updateSideOrderQuantity={updateSideOrderQuantity}
                   removeSideOrder={removeSideOrder}
+                  availableDates={deliveryDates}
+                  availableTimes={deliveryTimes}
                 />
               );
             })}
-            <div className="add-order-container"> <button type="button" onClick={addOrder} className="add-order-btn"> <Plus size={20} /> 別日・別の届け先の注文を追加する </button> </div>
+            <div className="add-order-container">
+              <button type="button" onClick={addOrder} className="add-order-btn"> <Plus size={20} /> 別日・別の届け先の注文を追加する </button>
+            </div>
             <div className="payment-info-section">
               <h2 className="payment-info-title">お支払い・書類設定</h2>
               <div className="payment-options-container always-open">
@@ -480,7 +560,6 @@ const OrderForm = () => {
                   )}
                 </div>
               </div>
-              
             </div>
             <div className="submit-container"> 
               <button type="button" onClick={handleOpenConfirmation} className="confirm-btn"> 注文内容を確認 </button>
