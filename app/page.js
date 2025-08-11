@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useConfiguration } from './contexts/ConfigurationContext'; // ★ 1. パスを修正
 import { Send, Plus, X as CloseIcon, Trash2 } from 'lucide-react';
 import CustomerInfoSection from '../components/CustomerInfoSection';
@@ -19,16 +19,16 @@ const OrderForm = () => {
   const deliveryTimes = useMemo(() => (configuration?.deliveryTimes || []), [configuration]);
   
   const initialCustomerInfo = {
-    storeNumber: '', contactName: '', email: '', fax: '', tel: '', companyName: '', department: '',
-    paymentMethod: '', invoiceName: '',
+    contactName: '', email: '', fax: '', tel: '', companyName: '',
+    paymentMethod: '', invoiceName: '', address: '', floorNumber: '',
     useCombinedPayment: false,
-    floorNumber: ''
   };
+  
 
   // createNewOrderはPRODUCTSに依存するため、useMemoでPRODUCTSが更新されるたびに再生成
   const createNewOrder = useMemo(() => {
     return () => ({
-      id: Date.now(), orderDate: '', orderTime: '', deliveryAddress: '', deliveryMethod: '',
+      id: Date.now(), orderDate: '', orderTime: '', deliveryAddress: '', deliveryMethod: '',isSameAddress: true,
       hasNetaChange: false,
       netaChangeDetails: '', 
       netaChanges: {},
@@ -93,7 +93,7 @@ const OrderForm = () => {
     setAllocationNumber('');
     setReceptionNumber('');
   };
-  const handleReceptionNumberChange = (e) => setReceptionNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase());
+  
   
   const handleAllocationChange = (prefix) => {
     setAllocationNumber(prefix);
@@ -104,9 +104,6 @@ const OrderForm = () => {
         updatedOrders[0].deliveryAddress = allocationData.address;
         setOrders(updatedOrders);
       }
-      if (!customerInfo.tel) {
-        setCustomerInfo(prev => ({ ...prev, tel: allocationData.tel }));
-      }
     }
   };
   
@@ -115,9 +112,18 @@ const OrderForm = () => {
     setCustomerInfo(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  const updateOrder = (orderId, updatedFields) => setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updatedFields } : o));
-  const addOrder = () => setOrders(prev => [...prev, createNewOrder()]);
-  const deleteOrder = (orderId) => setOrders(prev => prev.filter(o => o.id !== orderId));
+  const updateOrder = useCallback((orderId, updatedFields) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updatedFields } : o));
+  }, []); // 空の依存配列[]を指定すると、この関数は最初に一度しか作られない
+
+  // ★ (推奨) 他の関数も同様にラップしておくと、より安全になります
+  const addOrder = useCallback(() => {
+    setOrders(prev => [...prev, createNewOrder()]);
+  }, [createNewOrder]);
+
+  const deleteOrder = useCallback((orderId) => {
+    setOrders(prev => prev.filter(o => o.id !== orderId));
+  }, []);
   
   const calculateOrderTotal = (order) => {
     const mainTotal = (order.orderItems || []).reduce((total, item) => total + ((parseFloat(item.unitPrice) || 0) * (parseInt(item.quantity) || 0)), 0);
@@ -207,6 +213,8 @@ const OrderForm = () => {
     });
   }, [paymentGroups, orders, calculateOrderTotal]);
 
+  
+
   useEffect(() => {
     if (paymentGroups.length === 0) {
       if (manualReceipts.some(r => r.groupId)) {
@@ -229,54 +237,29 @@ const OrderForm = () => {
     setManualReceipts(newManualReceipts);
   }, [paymentGroupsWithTotals, customerInfo.paymentMethod, customerInfo.invoiceName, getDocumentType]);
   
-  useEffect(() => {
-    // 顧客情報の住所(address)または階数(floorNumber)が変更されたら実行
-    if (customerInfo.address && orders.length > 0) {
-      // 階数が入力されていれば、住所と結合する
-      const fullAddress = customerInfo.floorNumber
-        ? `${customerInfo.address} ${customerInfo.floorNumber}F`
-        : customerInfo.address;
-      // 最初の注文のお届け先住所を更新する
-      const updatedOrders = [...orders];
-      if (updatedOrders[0].deliveryAddress !== fullAddress) {
-        updatedOrders[0].deliveryAddress = fullAddress;
-        setOrders(updatedOrders);
-      }
-    }
-  }, [customerInfo.address, customerInfo.floorNumber, orders]); 
+  
 
-  const handleAllocationSelectForCustomer = (prefix) => {
-    // ...
-    const allocationData = ALLOCATION_MASTER[prefix];
-    if (allocationData) {
-      setCustomerInfo(prev => ({
-        ...prev,
-        address: allocationData.address || prev.address,
-      }));
-    }
-  };
-
-  const handleLocationSelect = (prefix) => {
-    setAllocationNumber(prefix); // ★ 割振番号のstateを更新
-
-    if (!prefix) return;
+  const handleLocationSelect = useCallback((prefix) => {
+    setAllocationNumber(prefix);
     
-    const allocationData = ALLOCATION_MASTER[prefix];
-    if (allocationData) {
-      // 顧客情報の自動入力
-      setCustomerInfo(prev => ({
-        ...prev,
-        companyName: allocationData.locationName || prev.companyName,
-        address: allocationData.address || prev.address,
-      }));
-      // 最初の注文の配送先住所も自動入力
-      if (orders.length > 0 && !orders[0].deliveryAddress) {
-        const updatedOrders = [...orders];
-        updatedOrders[0].deliveryAddress = allocationData.address;
-        setOrders(updatedOrders);
+    let newAddress = '';
+    let newCompanyName = '';
+    
+    if (prefix && prefix !== 'その他') {
+      const allocationData = ALLOCATION_MASTER[prefix];
+      if (allocationData) {
+        newAddress = allocationData.address || '';
       }
     }
-  };
+    
+    setCustomerInfo(prev => ({
+      ...prev,
+      companyName: newCompanyName,
+      address: newAddress,
+      floorNumber: '', // 住所が変わったら階数はリセット
+    }));
+  }, [ALLOCATION_MASTER]); // ★ useCallbackでラップ
+  
  
   const handleToggleReceiptDetails = () => setIsReceiptDetailsOpen(prev => !prev);
   const addReceipt = () => {
@@ -306,18 +289,27 @@ const OrderForm = () => {
   const finalReceipts = manualReceipts.length > 0 ? manualReceipts : autoGeneratedReceipts;
 
   const generateOrderNumber = (order, receptionNum, index) => {
-    if (!receptionNum || receptionNum === 'エラー') {
-      return '---';
-    }
-    const dateMatch = order.orderDate.match(/(\d{1,2})日/);
-    const day = (dateMatch && dateMatch[1]) ? dateMatch[1].padStart(2, '0') : '00';
+  if (!receptionNum || receptionNum === 'エラー' || !order.orderDate) {
+    return '---';
+  }
+  try {
+    // ★ YYYY-MM-DD のような形式を想定し、末尾2桁（日付）を取得
+    const day = order.orderDate.split('/')[2].padStart(2, '0');
     const orderSequence = (index + 1).toString();
     return `${day}${receptionNum}${orderSequence}`;
-  };
+  } catch (e) {
+    // もし予期せぬ日付形式でもエラーにならないようにする
+    console.error("Date format error:", order.orderDate);
+    return '---';
+  }
+};
 
   const handleOpenConfirmation = async () => {
-    if (!allocationNumber || !customerInfo.floorNumber) {
-      alert('ヘッダーの「割振番号」と、発注者情報の「階数」を入力してください。');
+    if(!customerInfo.floorNumber){
+      customerInfo.floorNumber = 0;
+    }
+    if (!allocationNumber) {
+      alert('住所を選択してください。');
       return;
     }
     try {
@@ -353,13 +345,13 @@ const OrderForm = () => {
     }));
 
     const finalData = { 
+      selectedYear: selectedYear,
       customer: customerInfo, 
       orders: ordersWithFinalId,
       receptionNumber, 
       allocationNumber, 
       paymentGroups: paymentGroupsWithTotals, 
       receipts: finalReceipts,
-      SIDE_ORDERS_DB, // Lambda側で単価を引くために追加
       orderType: '新規注文',
     };
 
@@ -432,19 +424,17 @@ const OrderForm = () => {
         ALLOCATION_MASTER={ALLOCATION_MASTER}
       /> )}
       {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleSubmit} customerInfo={customerInfo} orders={orders} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts} paymentGroups={paymentGroupsWithTotals} orderType="新規注文" /> )}
-      {isSidebarOpen && ( <> <div className="overlay" onClick={() => setIsSidebarOpen(false)}></div> <div className="sidebar"> <div className="sidebar-header"> <h3>{isLoggedIn ? '店舗情報' : 'ログイン'}</h3> <button onClick={() => setIsSidebarOpen(false)} className="sidebar-close-btn"> <CloseIcon size={24} /> </button> </div> <SidebarInfoSection isLoggedIn={isLoggedIn} onLogin={handleLogin} allocationNumber={allocationNumber} onAllocationChange={handleAllocationNumberChange} receptionNumber={receptionNumber} onReceptionChange={handleReceptionNumberChange} /> </div> </> )}
+      {isSidebarOpen && ( <> <div className="overlay" onClick={() => setIsSidebarOpen(false)}></div> <div className="sidebar"> <div className="sidebar-header"> <h3>{isLoggedIn ? '店舗情報' : 'ログイン'}</h3> <button onClick={() => setIsSidebarOpen(false)} className="sidebar-close-btn"> <CloseIcon size={24} /> </button> </div> <SidebarInfoSection isLoggedIn={isLoggedIn} onLogin={handleLogin} allocationNumber={allocationNumber}  /> </div> </> )}
       <div className="main-content">
         <div className="form-container">
           <div className="form-header"> <h1 className="form-title">注文フォーム</h1> <button onClick={() => setIsSidebarOpen(true)} className="hamburger-menu-btn" title="ログイン/店舗情報"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"> <line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /> </svg> </button> </div>
           <div className="order-detail-container">
-            <CustomerInfoSection 
-              formData={customerInfo} 
-              handleInputChange={handleCustomerInfoChange} 
+            <CustomerInfoSection
+              formData={customerInfo}
+              handleInputChange={handleCustomerInfoChange}
               allocationMaster={ALLOCATION_MASTER}
-              onAllocationSelect={handleAllocationSelectForCustomer}
-              onLocationSelect={handleLocationSelect} 
-              deliveryAddress={orders[0]?.deliveryAddress || ''}
-            />
+              onLocationSelect={handleLocationSelect}
+        />
             {orders.map((order, index) => {
               const orderNumberDisplay = generateOrderNumber(order, receptionNumber, index);
               return (
@@ -464,6 +454,7 @@ const OrderForm = () => {
                   removeSideOrder={removeSideOrder}
                   availableDates={deliveryDates}
                   availableTimes={deliveryTimes}
+                  customerAddress={customerInfo.address}
                 />
               );
             })}
