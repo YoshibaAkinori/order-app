@@ -55,6 +55,7 @@ const OrderForm = () => {
   const [paymentGroups, setPaymentGroups] = useState([]);
   const [isReceiptDetailsOpen, setIsReceiptDetailsOpen] = useState(false);
   const [manualReceipts, setManualReceipts] = useState([]);
+  const [globalNotes, setGlobalNotes] = useState(''); 
 
   useEffect(() => {
     if (!selectedYear) {
@@ -74,6 +75,26 @@ const OrderForm = () => {
     return '';
   };
 
+  const isInitialMount = React.useRef(true);
+
+  // 注文内容(orders)が変更されたら、領収書詳細をリセットするuseEffect
+  useEffect(() => {
+    // 初回マウント時（DBからのデータロード時）は何もしない
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // ユーザーの操作によって注文内容が変更された場合のみ、
+    // 領収書の詳細指定をリセットして、金額の不整合を防ぐ
+    console.log("注文内容が変更されたため、領収書・請求書の詳細を初期化します。");
+    setManualReceipts([]);
+
+    // 「まとめてお支払い」が設定されている場合は、それもリセットする
+    // （合計金額が変わるため）
+
+  }, [orders]);
+
 
   const resetForm = () => {
     setCustomerInfo(initialCustomerInfo);
@@ -85,6 +106,7 @@ const OrderForm = () => {
     setManualReceipts([]);
     setAllocationNumber('');
     setReceptionNumber('');
+    setGlobalNotes('');
   };
 
   const handleLogin = () => setIsLoggedIn(true);
@@ -262,13 +284,11 @@ const OrderForm = () => {
     setAllocationNumber(prefix);
     
     let newAddress = '';
-    let newCompanyName = '';
     
     if (prefix && prefix !== 'その他') {
       const allocationData = ALLOCATION_MASTER[prefix];
       if (allocationData) {
         newAddress = allocationData.address || '';
-        newCompanyName = allocationData.locationName || '';
       }
     }
     
@@ -374,6 +394,23 @@ const OrderForm = () => {
       ...order,
       orderId: generateOrderNumber(order, receptionNumber, index)
     }));
+    const transformedReceipts = finalReceipts.map(receipt => {
+      // 発行日に基づいて対応する注文とインデックスを探す
+      const correspondingOrder = orders.find(o => o.orderDate === receipt.issueDate);
+      const correspondingOrderIndex = orders.findIndex(o => o.orderDate === receipt.issueDate);
+
+      // 対応する注文が見つかった場合
+      if (correspondingOrder && correspondingOrderIndex !== -1) {
+        const finalOrderNumber = generateOrderNumber(correspondingOrder, receptionNumber, correspondingOrderIndex);
+        
+        // 有効な注文番号が生成されたら、issueDateを置き換える
+        if (finalOrderNumber !== '---') {
+          return { ...receipt, issueDate: finalOrderNumber };
+        }
+      }
+      // 置き換えられない場合は、元のreceipt（日付のまま）を返す
+      return receipt;
+    });
 
     const finalData = { 
       selectedYear: selectedYear,
@@ -382,8 +419,9 @@ const OrderForm = () => {
       receptionNumber, 
       allocationNumber, 
       paymentGroups: paymentGroupsWithTotals, 
-      receipts: finalReceipts,
+      receipts: transformedReceipts,
       orderType: '新規注文',
+      globalNotes: globalNotes,
     };
 
     try {
@@ -438,7 +476,6 @@ const OrderForm = () => {
     }
   };
 
-  const uniqueOrderDates = [...new Set(orders.map(o => o.orderDate).filter(Boolean))];
   
   if (loading) return <h4>設定データを読み込んでいます...</h4>;
   if (error) return <h4 style={{color: 'red'}}>エラー: {error}</h4>;
@@ -451,7 +488,7 @@ const OrderForm = () => {
         changeYear={changeYear}
         onLogout={handleLogout}  
       /> )}
-      {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleSubmit} customerInfo={customerInfo} orders={orders} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts} paymentGroups={paymentGroupsWithTotals} orderType="新規注文" /> )}
+      {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleSubmit} customerInfo={customerInfo} orders={orders} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts} paymentGroups={paymentGroupsWithTotals} orderType="新規注文" globalNotes={globalNotes}/> )}
       {isSidebarOpen && ( <> <div className="overlay" onClick={() => setIsSidebarOpen(false)}></div> <div className="sidebar"> <div className="sidebar-header"> <h3>{isLoggedIn ? '店舗情報' : 'ログイン'}</h3> <button onClick={() => setIsSidebarOpen(false)} className="sidebar-close-btn"> <CloseIcon size={24} /> </button> </div> <SidebarInfoSection isLoggedIn={isLoggedIn} onLogin={handleLogin}  /> </div> </> )}
       <div className="main-content">
         <div className="form-container">
@@ -495,7 +532,7 @@ const OrderForm = () => {
                 <div className="payment-info-fields-container">
                   <div className="payment-info-field"> <label className="payment-info-label"> 支払い方法 <span className="required-mark">*</span> </label> <select name="paymentMethod" value={customerInfo.paymentMethod} onChange={handleCustomerInfoChange} className="payment-info-select"> <option value="">選択してください</option> <option value="現金">現金</option> <option value="銀行振込">銀行振込</option> <option value="クレジットカード">クレジットカード</option> <option value="請求書払い">請求書払い</option> </select> </div>
                   <div className="payment-info-field"> <label className="payment-info-label"> 領収書・請求書の宛名（自動作成用） </label> <input type="text" name="invoiceName" value={customerInfo.invoiceName} onChange={handleCustomerInfoChange} className="payment-info-input" placeholder="株式会社○○○" /> </div>
-              </div>
+                </div>
                 <div className="payment-option-item">
                   <button type="button" onClick={handleToggleCombinedPayment} className="payment-option-title-button"> ・まとめてお支払いの有無 </button>
                   {isCombinedPaymentSummaryOpen && orders.length > 1 && (
@@ -511,7 +548,14 @@ const OrderForm = () => {
                               <label className="combined-payment-label">支払日</label>
                               <select value={group.paymentDate} onChange={(e) => updatePaymentGroup(group.id, 'paymentDate', e.target.value)} className="combined-payment-select" >
                                 <option value="">支払日を選択</option>
-                                {uniqueOrderDates.map(date => (<option key={date} value={date}>{date}</option>))}
+                                {orders.map((order, index) => (
+                                  // 日付が設定されている注文のみをオプションとして表示
+                                  order.orderDate && (
+                                  <option key={order.id} value={order.orderDate}>
+                                   注文#{index + 1} ({order.orderDate})
+                                  </option>
+                                 )
+                                ))}
                               </select>
                             </div>
                             <div className="order-checklist-container">
@@ -559,7 +603,14 @@ const OrderForm = () => {
                                 <label className="combined-payment-label">発行日</label>
                                 <select className="combined-payment-select" value={receipt.issueDate} onChange={(e) => updateReceipt(receipt.id, 'issueDate', e.target.value)}>
                                   <option value="">発行日を選択</option>
-                                  {uniqueOrderDates.map(date => (<option key={date} value={date}>{date}</option>))}
+                                  {orders.map((order, index) => (
+                                  // 日付が設定されている注文のみをオプションとして表示
+                                  order.orderDate && (
+                                  <option key={order.id} value={order.orderDate}>
+                                   注文#{index + 1} ({order.orderDate})
+                                  </option>
+                                 )
+                                ))}
                                 </select>
                               </div>
                               <div className="combined-payment-field">
@@ -579,6 +630,16 @@ const OrderForm = () => {
                   )}
                 </div>
               </div>
+            </div>
+            <div className="notes-section">
+              <h2 className="payment-info-title">備考</h2>
+              <textarea
+                className="notes-textarea"
+                value={globalNotes}
+                onChange={(e) => setGlobalNotes(e.target.value)}
+                placeholder="アレルギーに関する情報や、その他配送に関する特記事項などがございましたらご記入ください。"
+                rows="4"
+              />
             </div>
             <div className="submit-container"> 
               <button type="button" onClick={handleOpenConfirmation} className="confirm-btn"> 注文内容を確認 </button>

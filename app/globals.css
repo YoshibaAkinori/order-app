@@ -1817,3 +1817,21 @@ th {
   gap: 0.5rem;          /* ★ ボタンの間の隙間 */
   align-items: stretch; /* ★ ボタンの幅をコンテナに合わせる */
 }
+
+.notes-section {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.notes-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  margin-top: 10px;
+  resize: vertical; /* 縦方向のリサイズを許可 */
+}

@@ -9,12 +9,11 @@ const ConfirmationModal = ({
   receptionNumber,
   calculateOrderTotal,
   generateOrderNumber,
-  calculateGrandTotal,
-  isPaymentOptionsOpen,
   SIDE_ORDERS_DB,
   receipts,
   paymentGroups,
-  orderType
+  orderType,
+  globalNotes
 }) => {
   const handlePrint = () => {
     const printContent = document.getElementById('printable-area');
@@ -128,7 +127,7 @@ const ConfirmationModal = ({
                         </div>
                         <div className="conf-grand-total">
                             <strong>合計金額</strong>
-                            <span>¥ {calculateGrandTotal().toLocaleString()}</span>
+                            <span>¥ {(group.total || 0).toLocaleString()}</span>
                         </div>
                       </div>
                     ))}
@@ -140,8 +139,51 @@ const ConfirmationModal = ({
                   <h2 className="conf-order-title">領収書・請求書 詳細</h2>
                   <table className="conf-items-table">
                     <thead><tr><th>種別</th><th>発行日</th><th>宛名</th><th>金額</th></tr></thead>
-                    <tbody>{receipts.map(receipt => (<tr key={receipt.id}><td>{receipt.documentType}</td><td>{receipt.issueDate || '(未指定)'}</td><td>{receipt.recipientName || '(未指定)'}</td><td>¥{(parseInt(receipt.amount, 10) || 0).toLocaleString()}</td></tr>))}</tbody>
+                    {/* 変更箇所: 領収書・請求書詳細テーブルの<tbody> */}
+                    <tbody>
+                    {receipts.map(receipt => {
+                        // 1. 領収書の発行日(issueDate)と一致する注文(order)を探す
+                        const correspondingOrder = orders.find(o => o.orderDate === receipt.issueDate);
+                        const correspondingOrderIndex = orders.findIndex(o => o.orderDate === receipt.issueDate);
+
+                        // 2. 表示用の日付テキストを準備
+                        let displayDate = receipt.issueDate || '(未指定)';
+
+                        // 3. 一致する注文が見つかった場合、表示用テキストを「注文番号(日付)」の形式に更新
+                        if (correspondingOrder && correspondingOrderIndex !== -1) {
+                            const orderNumber = generateOrderNumber(correspondingOrder, receptionNumber, correspondingOrderIndex);
+                            // orderNumberが '---' でないことを確認
+                            if (orderNumber !== '---') {
+                                displayDate = `${orderNumber}(${receipt.issueDate})`;
+                            }
+                        }
+
+                        return (
+                            <tr key={receipt.id}>
+                                <td>{receipt.documentType}</td>
+                                {/* 4. 作成した表示用テキストを<td>の中に表示 */}
+                                <td>{displayDate}</td>
+                                <td>{receipt.recipientName || '(未指定)'}</td>
+                                <td>¥{(parseInt(receipt.amount, 10) || 0).toLocaleString()}</td>
+                            </tr>
+                        );
+                    })}
+                    </tbody>
                   </table>
+                </section>
+              )}
+              {globalNotes && (
+                <section className="conf-section conf-notes-details">
+                  <h2 className="conf-order-title">備考</h2>
+                  <p className="conf-notes-text">
+                    {/* 改行を<br>に変換して表示 */}
+                    {globalNotes.split('\n').map((line, i) => (
+                      <React.Fragment key={i}>
+                        {line}
+                        <br />
+                      </React.Fragment>
+                    ))}
+                  </p>
                 </section>
               )}
               <footer className="conf-footer"> <p><strong>松栄寿し 長野駅東口店</strong></p> <p>〒380-0921 長野県長野市大字栗田1525番地</p> <p>TEL: (026)217-8700 / FAX: (026)268-1718</p> </footer>
