@@ -2,18 +2,7 @@
 import React from 'react';
 
 // ★ propsに selectedYear と changeYear を追加
-const Header = ({ onLogout, allocationNumber, onAllocationChange, ALLOCATION_MASTER, selectedYear, changeYear }) => {
-
-  // ★ 年選択肢を動的に生成するロジック
-  const generateYearOptions = () => {
-    const currentYear = new Date().getFullYear();
-    const years = [];
-    for (let i = currentYear - 2; i <= currentYear + 2; i++) {
-      years.push(i);
-    }
-    return years;
-  };
-  const yearOptions = generateYearOptions();
+const Header = ({ onLogout }) => {
 
   return (
     <header className="app-header">
@@ -31,23 +20,6 @@ const Header = ({ onLogout, allocationNumber, onAllocationChange, ALLOCATION_MAS
           ログアウト
         </button>
       </div>
-      <div className="header-controls">
-        {/* ★ 年選択のドロップダウンを追加 */}
-        <div className="header-control-item">
-          <label htmlFor="year-select">設定年: </label>
-          <select
-            id="year-select"
-            value={selectedYear || ''}
-            onChange={(e) => changeYear(e.target.value)}
-            className="header-select"
-          >
-            <option value="" disabled>選択...</option>
-            {yearOptions.map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-        </div>
-    </div>
     </header>
   );
 };

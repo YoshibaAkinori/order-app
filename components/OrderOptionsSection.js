@@ -64,7 +64,10 @@ const OrderOptionsSection = ({
                         <h5 className="standard-neta-title">標準ネタ:</h5>
                         <div className="standard-neta-list">
                           {PRODUCTS[product.productKey].neta.map((netaItem) => (
-                            <span key={netaItem} className="standard-neta-item">{netaItem}</span>
+                            <span key={netaItem.name} className="standard-neta-item">
+                            {/* 表示する内容も、オブジェクトから名前と数量を取り出すように修正 */}
+                            {netaItem.name}
+                            </span>
                           ))}
                         </div>
                       </div>
@@ -89,14 +92,27 @@ const OrderOptionsSection = ({
                                 </button>
                               </div>
                             </div>
-                            <div className="neta-checkbox-grid">
+                            <div className="neta-checkbox-item">
+                              {/* ★ 1. ここで再度mapループを追加して、netaItemを定義する */}
                               {PRODUCTS[product.productKey].neta.map((netaItem) => (
-                                <div key={netaItem} className="neta-checkbox-item">
-                                  <input type="checkbox" id={`${product.productKey}-${pattern.id}-${netaItem}`} checked={pattern.selectedNeta[netaItem] || false} onChange={(e) => handleNetaSelection(product.productKey, pattern.id, netaItem, e.target.checked)} className="neta-checkbox" />
-                                  <label htmlFor={`${product.productKey}-${pattern.id}-${netaItem}`} className="neta-label">{netaItem}</label>
+                                <div key={netaItem.name} className="neta-checkbox-item">
+                                  <input 
+                                    type="checkbox" 
+                                    id={`${product.productKey}-${pattern.id}-${netaItem.name}`} 
+                                    checked={pattern.selectedNeta[netaItem.name] || false} 
+                                    onChange={(e) => handleNetaSelection(product.productKey, pattern.id, netaItem.name, e.target.checked)} 
+                                    className="neta-checkbox" 
+                                  />
+                                  <label 
+                                    htmlFor={`${product.productKey}-${pattern.id}-${netaItem.name}`} 
+                                    className="neta-label"
+                                  >
+                                    {netaItem.name}
+                                  </label>
                                 </div>
                               ))}
                             </div>
+
                             <p className="pattern-note">※ チェックしたネタが別のネタへ変更されます</p>
                             <div className="wasabi-ori-section">
                               <div className="wasabi-options">

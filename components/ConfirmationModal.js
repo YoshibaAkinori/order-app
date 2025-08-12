@@ -7,7 +7,6 @@ const ConfirmationModal = ({
   customerInfo,
   orders,
   receptionNumber,
-  allocationNumber,
   calculateOrderTotal,
   generateOrderNumber,
   calculateGrandTotal,

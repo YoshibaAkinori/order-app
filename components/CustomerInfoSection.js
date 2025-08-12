@@ -1,37 +1,55 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 
-
-const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, onLocationSelect, deliveryAddress }) => {
+const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, onLocationSelect　}) => {
   const [selectedValue, setSelectedValue] = useState('');
 
   useEffect(() => {
-    // formData.addressから現在の選択値を逆引きして設定
-    const currentKey = Object.keys(allocationMaster).find(key => allocationMaster[key].address === formData.address);
-    if (currentKey) {
-      setSelectedValue(currentKey);
-    } else if (formData.address) {
-      // 登録済みの住所に一致しないが、住所が入力されている場合は「その他」を選択状態にする
-      setSelectedValue('その他');
-    } else {
-      setSelectedValue('');
+    // 初期化時のみ実行
+    if (!selectedValue && formData.address) {
+      const currentKey = Object.keys(allocationMaster).find(key => allocationMaster[key].address === formData.address);
+      if (currentKey) {
+        setSelectedValue(currentKey);
+      }
     }
-  }, [formData.address, allocationMaster]);
+  }, [allocationMaster]); // formData.addressを依存配列から削除
   
   const handleSelectChange = (e) => {
-    const prefix = e.target.value;
-    setSelectedValue(prefix);
-    onLocationSelect(prefix); // 親コンポーネントに変更を通知
+  const prefix = e.target.value;
+  setSelectedValue(prefix);
+  
+  // ★ 修正：常に onLocationSelect を呼び出す
+  onLocationSelect(prefix);
+  
+  // allocationMasterから選択された住所の値を確認
+  const selectedAddress = allocationMaster[prefix]?.address;
+  
+  if (selectedAddress === 'その他') {
+    // 「その他」を選択した場合は、住所欄と階数を同時に初期化
+    const addressEvent = { target: { name: 'address', value: '' } };
+    const floorEvent = { target: { name: 'floorNumber', value: '' } };
+    
+    // 両方を同期的に処理
+    handleInputChange(addressEvent);
+    handleInputChange(floorEvent);
+  }
+  // ★ else文を削除して、常にonLocationSelectが呼ばれるようにした
+};
+
+  const handleAddressChange = (e) => {
+    // 手入力時は選択状態をそのまま維持
+    handleInputChange(e);
   };
-  const isAddressManuallyEditable = selectedValue === 'その他';
+
+  // 「その他」に対応するキーを取得
+  const otherKey = Object.keys(allocationMaster || {}).find(key => allocationMaster[key].address === 'その他');
+  const isOtherSelected = selectedValue === otherKey;
 
   return (
     <div className="customer-info-section">
       <h2 className="customer-info-title">発注者の情報</h2>
       <div className="customer-info-container">
         <div className="customer-info-form">
-
-          {/* ... 担当者名から部署名までのフィールドは変更なし ... */}
           <div className="customer-info-field">
             <label className="customer-info-label">
               担当者名 <span className="required-mark">*</span>
@@ -60,14 +78,13 @@ const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, on
             </label>
             <input type="text" name="companyName" value={formData.companyName} onChange={handleInputChange} className="customer-info-input" placeholder="県庁 〇〇課" />
           </div>
-          {/* ★ 2. 割り当て場所を選択するドロップダウンを追加 */}
+          
           <div className="customer-info-field">
             <label className="customer-info-label">住所</label>
             <select
-              onChange={(e) => onLocationSelect(e.target.value)} // ★ 呼び出す関数名を変更
+              onChange={handleSelectChange}
               className="customer-info-input"
-              // ★ valueを追加して、選択が反映されるようにする
-              value={Object.keys(allocationMaster).find(key => allocationMaster[key].address === formData.address) || ''}
+              value={selectedValue}
             >
               <option value="">-- 選択してください --</option>
               {Object.keys(allocationMaster || {}).map(prefix => (
@@ -77,27 +94,35 @@ const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, on
               ))}
             </select>
           </div>
-          <div className="customer-info-field">
-            <label className="customer-info-label">階数</label>
-            <input
-              type="number"
-              name="floorNumber"
-              value={formData.floorNumber}
-              onChange={handleInputChange}
-              className="customer-info-input"
-              placeholder="例: 2"
-            />
-          </div>
-          <div className="customer-info-field">
-            <label className="customer-info-label">お届け先住所詳細</label>
-            <textarea 
-              name="deliveryAddressDetail" // 名前は他と重複しないように変更
-              value={deliveryAddress} // ★ propsから受け取った値を表示
-              rows="3" 
-              className="customer-info-input" // 他の入力欄とスタイルを合わせる
-              readOnly // ★ この欄は自動入力専用とし、直接編集はさせない
-            />
-          </div>
+
+          {/* その他選択時の手入力欄 */}
+          {isOtherSelected && (
+            <div className="customer-info-field">
+              <label className="customer-info-label">住所詳細</label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleAddressChange}
+                className="customer-info-input"
+                placeholder="住所を入力してください"
+              />
+            </div>
+          )}
+
+          {!isOtherSelected && (
+            <div className="customer-info-field">
+              <label className="customer-info-label">階数</label>
+              <input
+                type="number"
+                name="floorNumber"
+                value={formData.floorNumber}
+                onChange={handleInputChange}
+                className="customer-info-input"
+                placeholder="例: 2"
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

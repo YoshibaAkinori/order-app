@@ -1,4 +1,5 @@
-import React from 'react';
+"use client";
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import OrderItemsSection from './OrderItemsSection';
 import OrderOptionsSection from './OrderOptionsSection';
@@ -15,15 +16,38 @@ const SingleOrderSection = ({
   addSideOrder,
   updateSideOrderQuantity,
   removeSideOrder,
-  calculateOrderTotal
+  calculateOrderTotal,
+  availableDates,
+  availableTimes,
+  customerAddress
 }) => {
-  const availableDates = ['2025年12月25日', '2025年12月26日', '2026年01月05日'];
-  const availableTimes = ['11:00', '12:00', '13:00'];
+
+  const isSameAsCustomerAddress = order.isSameAddress !== false; // 未定義(undefined)の場合はtrueとして扱う
+
+  useEffect(() => {
+    if (isSameAsCustomerAddress) {
+      // 「同上」がチェックされている場合、親から渡された完全な住所をコピー
+      if (order.deliveryAddress !== customerAddress) {
+        updateOrder(order.id, { deliveryAddress: customerAddress });
+      }
+    }
+  }, [customerAddress, isSameAsCustomerAddress, order.id, updateOrder, order.deliveryAddress]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     updateOrder(order.id, { [name]: value });
   };
+  
+  // ★ 2. チェックボックスのハンドラを修正
+  const handleSameAddressChange = (e) => {
+    const isChecked = e.target.checked;
+    updateOrder(order.id, {
+      isSameAddress: isChecked,
+      // ★ チェックが外れたら住所をクリア、入ったら親の住所をコピー
+      deliveryAddress: isChecked ? customerAddress : ''
+    });
+  };
+ 
 
   const handleItemChange = (itemIndex, field, value) => {
     const halfWidthValue = String(value).replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0));
@@ -90,9 +114,28 @@ const SingleOrderSection = ({
           </div>
         </div>
         <div className="single-order-field">
-          <label className="single-order-label">お届け先住所</label>
-          <textarea name="deliveryAddress" value={order.deliveryAddress} onChange={handleInputChange} rows="3" className="single-order-textarea" placeholder="〒380-0921 長野県長野市栗田1525" />
+        <label className="single-order-label">お届け先住所</label>
+        <div className="address-checkbox-container">
+          <input
+            type="checkbox"
+            id={`same-address-check-${order.id}`}
+            checked={isSameAsCustomerAddress}
+            onChange={handleSameAddressChange}
+          />
+          <label htmlFor={`same-address-check-${order.id}`}>発注者の住所と同じ</label>
         </div>
+        
+        {!isSameAsCustomerAddress && (
+          <textarea 
+            name="deliveryAddress" 
+            value={order.deliveryAddress} 
+            onChange={handleInputChange} 
+            rows="3" 
+            className="single-order-textarea"
+            placeholder="お届け先の住所を手入力してください"
+          />
+        )}
+      </div>
         <div className="single-order-field">
           <label className="single-order-label">配達方法 <span className="required-mark">*</span></label>
           <select name="deliveryMethod" value={order.deliveryMethod} onChange={handleInputChange} className="single-order-select"> <option value="">選択してください</option> <option value="出前">出前</option> <option value="東口受け取り">東口受け取り</option> <option value="日詰受け取り">日詰受け取り</option> </select>
