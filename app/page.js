@@ -499,6 +499,7 @@ const OrderForm = () => {
               handleInputChange={handleCustomerInfoChange}
               allocationMaster={ALLOCATION_MASTER}
               onLocationSelect={handleLocationSelect}
+              allocationNumber={allocationNumber}
         />
             {orders.map((order, index) => {
               const orderNumberDisplay = generateOrderNumber(order, receptionNumber, index);

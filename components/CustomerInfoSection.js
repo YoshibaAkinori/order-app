@@ -4,15 +4,6 @@ import React, { useState, useEffect } from 'react';
 const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, onLocationSelect　}) => {
   const [selectedValue, setSelectedValue] = useState('');
 
-  useEffect(() => {
-    // 初期化時のみ実行
-    if (!selectedValue && formData.address) {
-      const currentKey = Object.keys(allocationMaster).find(key => allocationMaster[key].address === formData.address);
-      if (currentKey) {
-        setSelectedValue(currentKey);
-      }
-    }
-  }, [allocationMaster]); // formData.addressを依存配列から削除
   
   const handleSelectChange = (e) => {
   const prefix = e.target.value;

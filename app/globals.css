@@ -1835,3 +1835,34 @@ th {
   margin-top: 10px;
   resize: vertical; /* 縦方向のリサイズを許可 */
 }
+
+
+.allocation-container {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  margin-top: 2rem;
+}
+
+.allocation-task-list {
+  flex: 2; /* 幅の比率を2にする */
+}
+
+.allocation-summary {
+  flex: 1; /* 幅の比率を1にする */
+}
+
+.allocation-summary h3 {
+  text-align: center;
+  font-size: 1.5rem;
+  margin-top: 0;
+}
+.nested-table {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.nested-table th, .nested-table td {
+  padding: 0.5rem;
+  font-size: 0.9rem;
+}

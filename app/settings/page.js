@@ -21,6 +21,7 @@ export default function ProductAdminPage() {
 
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
+  const [newRoute, setNewRoute] = useState('');
 
   // 割り当てフォーム用のstateを追加
   const [isAllocationFormOpen, setIsAllocationFormOpen] = useState(false);
@@ -234,6 +235,17 @@ export default function ProductAdminPage() {
       </select>
     </div>
   );
+   const handleAddRoute = () => {
+    if (newRoute && !(configuration.deliveryRoutes || []).includes(newRoute)) {
+      const newList = [...(configuration.deliveryRoutes || []), newRoute];
+      handleUpdateConfigList('deliveryRoutes', newList);
+      setNewRoute('');
+    }
+  };
+  const handleDeleteRoute = (indexToRemove) => {
+    const newList = (configuration.deliveryRoutes || []).filter((_, index) => index !== indexToRemove);
+    handleUpdateConfigList('deliveryRoutes', newList);
+  };
 
   
   
@@ -404,6 +416,23 @@ export default function ProductAdminPage() {
             </li>
           ))}
         </ul>
+              </div>
+              <div className="admin-Date-section">
+                <div className="admin-controls-container">
+                  <h2>割り振り担当の管理</h2>
+                </div>
+                <div className="list-edit-form">
+                  <input type="text" value={newRoute} onChange={(e) => setNewRoute(e.target.value)} placeholder="例: 県庁担当" />
+                  <button onClick={handleAddRoute}>追加</button>
+                </div>
+                <ul className="item-list">
+                  {(configuration?.deliveryRoutes || []).map((route, index) => (
+                    <li key={index}>
+                      {route}
+                      <button onClick={() => handleDeleteRoute(index)}>×</button>
+                    </li>
+                  ))}
+                </ul>
               </div>
       
               {/* === 通常メニューセクション === */}
