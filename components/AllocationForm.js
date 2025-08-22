@@ -14,7 +14,7 @@ export default function AllocationForm({ initialData, onSubmit, onCancel }) {
     if (initialData) {
       setFormData(initialData);
     } else {
-      setFormData({ allocationPrefix: '', locationName: '', address: '', tel: '' });
+      setFormData({ address: '' });
     }
   }, [initialData]);
 

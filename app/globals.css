@@ -1866,3 +1866,174 @@ th {
   padding: 0.5rem;
   font-size: 0.9rem;
 }
+
+/*ネタ数*/
+.summary-header {
+  display: flex;
+  border: 2px solid #333;
+  max-width: 800px;
+  margin: 0 auto 20px auto;
+}
+.summary-select {
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  font-weight: bold;
+  width: 100%;
+  padding: 15px;
+  text-align: center;
+  appearance: none;
+}
+.summary-header > div {
+  flex: 1;
+  border-right: 1px solid #333;
+}
+.summary-header > div:last-child {
+  border-right: none;
+}
+.summary-fetch-button {
+  padding: 10px 30px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.summary-grid-container {
+  display: grid;
+  grid-template-columns: 2.5fr 1fr;
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.product-summary-table {
+  width: 100%;
+  border: 2px solid black;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+.product-summary-table td {
+  border: 1px solid black;
+  text-align: center;
+  vertical-align: middle;
+  height: 40px;
+}
+.product-name-cell {
+  font-size: 2.5rem;
+  font-weight: bold;
+  width: 120px;
+}
+.label-cell {
+  width: 80px;
+}
+.sub-label {
+  text-align: right !important;
+  padding-right: 5px;
+}
+.value-cell {
+  font-size: 2rem;
+  font-weight: bold;
+  width: 120px;
+}
+.sub-value {
+  font-size: 1.2rem;
+}
+.unit-cell {
+  font-size: 1.5rem;
+  width: 60px;
+}
+.no-wasabi-label, .no-wasabi-value {
+  background-color: #fde2e4;
+}
+.other-orders-section {
+  margin-top: 2rem;
+}
+.other-order-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.5rem;
+  font-weight: bold;
+  border: 2px solid black;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.summary-neta-section .summary-table {
+  border: 2px solid black;
+}
+.summary-neta-section .summary-table td:first-child {
+  font-weight: bold;
+}
+.neta-table-header {
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+
+
+/* === サイドバー風モーダルのスタイル === */
+
+/* === サイドバー風モーダルのスタイル === */
+
+/* 背景のオーバーレイ */
+.modal-backdrop-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  /* ★ ここから overflow-y: auto; を削除 */
+}
+
+/* モーダル本体の基本スタイル */
+.modal-content-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: white;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
+  z-index: 1001;
+
+  /* ★ アニメーションの設定 */
+  transform: translateY(-100%);
+  transition: transform 0.3s ease-out;
+  
+  /* ★★★ ここからが修正箇所 ★★★ */
+  /* コンテンツが画面の高さを超えた場合に、この要素自体をスクロールさせる */
+  max-height: 90vh; /* 例えば、画面の高さの90%を上限とする */
+  overflow-y: auto; /* 縦方向にコンテンツがはみ出たらスクロールバーを表示 */
+}
+
+/* ★ モーダルを表示するためのクラス */
+.modal-content-sidebar.open {
+  transform: translateY(0); /* このクラスが付くと、画面内にスライドイン */
+}
+
+/* 印刷ボタンと閉じるボタンのスタイル（既存のものと重複する場合は調整） */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.print-button {
+  margin-right: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+}
+

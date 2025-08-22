@@ -6,6 +6,7 @@ import { createNeta, updateNeta, deleteNeta } from '../lib/netaApi';
 import ProductForm from '../../components/ProductForm';
 import NetaForm from '../../components/NetaForm';
 import AllocationForm from '../../components/AllocationForm';
+import WariateForm from '../../components/WariateForm';
 
 export default function ProductAdminPage() {
   const { configuration, netaMaster, loading, error, selectedYear, changeYear, fetchConfiguration } = useConfiguration();
@@ -22,6 +23,9 @@ export default function ProductAdminPage() {
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
   const [newRoute, setNewRoute] = useState('');
+  const [newWariate, setNewWariate] = useState('');
+  const [isWariateFormOpen, setIsWariateFormOpen] = useState(false);
+  const [editingWariate, setEditingWariate] = useState(null);
 
   // 割り当てフォーム用のstateを追加
   const [isAllocationFormOpen, setIsAllocationFormOpen] = useState(false);
@@ -246,7 +250,34 @@ export default function ProductAdminPage() {
     const newList = (configuration.deliveryRoutes || []).filter((_, index) => index !== indexToRemove);
     handleUpdateConfigList('deliveryRoutes', newList);
   };
-
+  // --- 割り当て(deliveryWariate)関連のハンドラ ---
+  const handleAddNewWariate = () => {
+    setEditingWariate(null); // 新規作成モード
+    setIsWariateFormOpen(true);
+  };
+  const handleEditWariate = (wariate) => {
+    setEditingWariate(wariate); // 編集モード
+    setIsWariateFormOpen(true);
+  };
+  const handleDeleteWariate = (indexToRemove) => {
+    if (window.confirm('本当にこの割り当てを削除しますか？')) {
+      const newList = (configuration.deliveryWariate || []).filter((_, index) => index !== indexToRemove);
+      handleUpdateConfigList('deliveryWariate', newList);
+    }
+  };
+  const handleWariateFormSubmit = async (formData) => {
+    const currentWariate = configuration.deliveryWariate || [];
+    let newWariateList;
+    if (editingWariate) {
+      // 編集の場合
+      newWariateList = currentWariate.map(w => w.name === editingWariate.name ? formData : w);
+    } else {
+      // 新規追加の場合
+      newWariateList = [...currentWariate, formData];
+    }
+    await handleUpdateConfigList('deliveryWariate', newWariateList);
+    setIsWariateFormOpen(false);
+  };
   
   
   if (error) {
@@ -342,6 +373,13 @@ export default function ProductAdminPage() {
           onCancel={() => setIsAllocationFormOpen(false)}
         />
       )}
+      {isWariateFormOpen && (
+        <WariateForm
+          initialData={editingWariate}
+          onSubmit={handleWariateFormSubmit}
+          onCancel={() => setIsWariateFormOpen(false)}
+        />
+      )}
 
       <div className="admin-controls-container">
         {yearSelector}
@@ -401,35 +439,18 @@ export default function ProductAdminPage() {
 
               {/* === 配達時間帯の管理セクション === */}
               <div className="admin-Date-section">
-        <div className="admin-Date-container">
-          <h2>配達時間帯の管理</h2>
-        </div>
-        <div className="list-edit-form">
-          <input type="text" value={newTime} onChange={(e) => setNewTime(e.target.value)} placeholder="例: 11時半まで" />
-          <button onClick={handleAddTime}>追加</button>
-        </div>
-        <ul className="item-list">
-          {(configuration?.deliveryTimes || []).map((time, index) => (
-            <li key={index}>
-              {time}
-              <button onClick={() => handleDeleteTime(index)}>×</button>
-            </li>
-          ))}
-        </ul>
-              </div>
-              <div className="admin-Date-section">
-                <div className="admin-controls-container">
-                  <h2>割り振り担当の管理</h2>
-                </div>
+                <div className="admin-Date-container">
+                  <h2>配達時間帯の管理</h2>
+                 </div>
                 <div className="list-edit-form">
-                  <input type="text" value={newRoute} onChange={(e) => setNewRoute(e.target.value)} placeholder="例: 県庁担当" />
-                  <button onClick={handleAddRoute}>追加</button>
+                  <input type="text" value={newTime} onChange={(e) => setNewTime(e.target.value)} placeholder="例: 11時半まで" />
+                  <button onClick={handleAddTime}>追加</button>
                 </div>
                 <ul className="item-list">
-                  {(configuration?.deliveryRoutes || []).map((route, index) => (
+                  {(configuration?.deliveryTimes || []).map((time, index) => (
                     <li key={index}>
-                      {route}
-                      <button onClick={() => handleDeleteRoute(index)}>×</button>
+                      {time}
+                    <button onClick={() => handleDeleteTime(index)}>×</button>
                     </li>
                   ))}
                 </ul>
@@ -528,6 +549,52 @@ export default function ProductAdminPage() {
                 </table>
               </div>
               {/* === 割当セクション === */}
+              <div className="admin-Date-section">
+                <div className="admin-controls-container">
+                  <h2>割り振り担当の管理</h2>
+                </div>
+                <div className="list-edit-form">
+                  <input type="text" value={newRoute} onChange={(e) => setNewRoute(e.target.value)} placeholder="例: 県庁担当" />
+                  <button onClick={handleAddRoute}>追加</button>
+                </div>
+                <ul className="item-list">
+                  {(configuration?.deliveryRoutes || []).map((route, index) => (
+                    <li key={index}>
+                      {route}
+                      <button onClick={() => handleDeleteRoute(index)}>×</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="admin-menu-section">
+            <div className="admin-controls-container">
+              <h2>割り当ての管理</h2>
+              <button onClick={handleAddNewWariate}>+ 新しい割り当てを追加</button>
+            </div>
+            <table className='mastatable'>
+              <thead>
+                <tr>
+                  <th>割り当て名</th>
+                  <th>担当する割り振り</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(configuration?.deliveryWariate || []).map((wariate, index) => (
+                  <tr key={index}>
+                    <td>{wariate.name}</td>
+                    <td>{(wariate.responsibleRoutes || []).join(', ')}</td>
+                    <td>
+                      <div className="action-buttons">
+                        <button onClick={() => handleEditWariate(wariate)} className="edit-button">編集</button>
+                        <button onClick={() => handleDeleteWariate(index)} className="delete-button">削除</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
               <div className="admin-menu-section">
                 <div className="admin-controls-container">
                   <h2>割り当てアルファベット</h2>

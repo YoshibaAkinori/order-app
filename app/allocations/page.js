@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useConfiguration } from '../contexts/ConfigurationContext';
 import { getOrdersByDate, updateAllocations } from '../lib/allocationApi';
 
@@ -18,6 +18,47 @@ const AllocationPage = () => {
   const allocationMaster = useMemo(() => (configuration?.allocationMaster || {}), [configuration]);
   const deliveryRoutes = useMemo(() => (configuration?.deliveryRoutes || []), [configuration]);
 
+  useEffect(() => {
+    if (orders.length > 0) {
+      const restoredAssignments = {};
+      const assignmentsByPrefix = {}; // 各割振番号ごとの割り当てを一時的に集計
+
+      orders.forEach(order => {
+        if (order.assignedRoute) {
+          const prefix = order.orderId?.[2];
+          
+          if (order.isSameAddress === false || !prefix || !allocationMaster[prefix] || allocationMaster[prefix].address === 'その他') {
+            restoredAssignments[order.orderId] = order.assignedRoute;
+          } else {
+            const floor = order.orderId?.[3] || '階数未定';
+            const floorKey = `${prefix}-${floor}`;
+            restoredAssignments[floorKey] = order.assignedRoute;
+            
+            // 全体割り当てを推測するために、prefixごとの割り当てを記録
+            if (!assignmentsByPrefix[prefix]) {
+              assignmentsByPrefix[prefix] = [];
+            }
+            assignmentsByPrefix[prefix].push(order.assignedRoute);
+          }
+        }
+      });
+
+      // 記録した情報から、全体割り当てを決定
+      Object.keys(assignmentsByPrefix).forEach(prefix => {
+        const routes = assignmentsByPrefix[prefix];
+        if (routes.length > 0) {
+          const firstRoute = routes[0];
+          // そのprefixの全ての注文が同じ割り当て先なら、全体割り当てもセットする
+          if (routes.every(route => route === firstRoute)) {
+            restoredAssignments[prefix] = firstRoute;
+          }
+        }
+      });
+
+      setAssignments(restoredAssignments);
+    }
+  }, [orders, allocationMaster]);
+  
   const handleDateChange = async (e) => {
     const date = e.target.value;
     setSelectedDate(date);
@@ -94,17 +135,15 @@ const AllocationPage = () => {
     const summary = {};
     deliveryRoutes.forEach(route => summary[route] = 0);
 
-    // 割り当て済み注文を集計
     Object.keys(groupedByFloor).forEach(prefix => {
-        Object.keys(groupedByFloor[prefix]).forEach(floor => {
-            const floorKey = `${prefix}-${floor}`;
-            const assignedRoute = assignments[floorKey] || assignments[prefix];
-            if (assignedRoute) {
-                const totalQuantity = groupedByFloor[prefix][floor].reduce((sum, order) => 
-                    sum + (order.orderItems || []).reduce((s, i) => s + (i.quantity || 0), 0), 0);
-                summary[assignedRoute] += totalQuantity;
-            }
-        });
+      Object.keys(groupedByFloor[prefix]).forEach(floor => {
+        const floorKey = `${prefix}-${floor}`;
+        const assignedRoute = assignments[floorKey] || assignments[prefix];
+        if (assignedRoute) {
+          const totalQuantity = groupedByFloor[prefix][floor].reduce((sum, order) => sum + (order.orderItems || []).reduce((s, i) => s + (i.quantity || 0), 0), 0);
+          summary[assignedRoute] += totalQuantity;
+        }
+      });
     });
 
     // ★ 個別対応の注文も集計に含める
