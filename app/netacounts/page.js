@@ -57,10 +57,9 @@ const SummaryPage = () => {
 
     const { product_summary, other_orders_summary, filtered_orders, masters } = apiData;
     
-    // ネタサマリーを初期化
     const neta_summary = {};
     const neta_drilldown = {};
-    masters.netaMaster.forEach(neta => {
+    (masters.netaMaster || []).forEach(neta => {
         neta_summary[neta.netaName] = 0;
         neta_drilldown[neta.netaName] = {
             breakdown: Object.keys(masters.products).reduce((acc, key) => ({...acc, [key]: 0}), {}),
@@ -69,37 +68,90 @@ const SummaryPage = () => {
     });
 
     // 注文をループしてネタ数を集計
-    (filtered_orders || []).forEach(order => {
+   (filtered_orders || []).forEach(order => {
         (order.orderItems || []).forEach(item => {
-            const key = item.productKey;
-            const qty = item.quantity || 0;
-            if(!masters.products[key] || qty === 0) return;
+            const productKey = item.productKey;
+            const totalItemQty = item.quantity || 0;
+            const productMaster = masters.products[productKey];
+            if(!productMaster || totalItemQty === 0) return;
 
-            let final_neta_composition = {};
-            const neta_changes = order.netaChanges?.[key];
+            const neta_changes_patterns = order.netaChanges?.[productKey] || [];
+            let changed_qty_total = 0;
+            
+            // まず、変更パターンがあるものを先に処理
+            neta_changes_patterns.forEach(pattern => {
+                const pattern_qty = pattern.quantity || 0;
+                changed_qty_total += pattern_qty;
 
-            if (neta_changes && neta_changes.length > 0) {
-                const final_neta_names = Object.keys(neta_changes[0].selectedNeta || {});
-                final_neta_names.forEach(name => final_neta_composition[name] = (final_neta_composition[name] || 0) + 1);
-            } else {
-                (masters.products[key].neta || []).forEach(neta => {
-                    final_neta_composition[neta.name] = (final_neta_composition[neta.name] || 0) + (neta.quantity || 1);
+                const originalNetaSet = new Set((productMaster.neta || []).map(n => n.name));
+                const removedNetaSet = new Set(Object.keys(pattern.selectedNeta || {}));
+                const addedNeta = pattern.to_neta || [];
+
+                const finalNetaSet = new Set(originalNetaSet);
+                removedNetaSet.forEach(neta => finalNetaSet.delete(neta));
+                addedNeta.forEach(neta => finalNetaSet.add(neta));
+
+                finalNetaSet.forEach(netaName => {
+                    if(neta_summary.hasOwnProperty(netaName)){
+                        neta_drilldown[netaName].breakdown[productKey] += pattern_qty;
+                    }
+                });
+
+                removedNetaSet.forEach(netaName => {
+                    if(neta_drilldown.hasOwnProperty(netaName)){
+                        neta_drilldown[netaName].changeTotal -= pattern_qty;
+                    }
+                });
+                addedNeta.forEach(netaName => {
+                    if(neta_drilldown.hasOwnProperty(netaName)){
+                        neta_drilldown[netaName].changeTotal += pattern_qty;
+                    }
+                });
+            });
+
+            // 次に、変更されなかった通常分を処理
+            const normal_qty = totalItemQty - changed_qty_total;
+            if (normal_qty > 0) {
+                (productMaster.neta || []).forEach(neta => {
+                    const netaName = neta.name;
+                    const netaQty = neta.quantity || 1;
+                     if(neta_summary.hasOwnProperty(netaName)){
+                        neta_drilldown[netaName].breakdown[productKey] += netaQty * normal_qty;
+                    }
                 });
             }
-
-            Object.keys(final_neta_composition).forEach(netaName => {
-                const netaQty = final_neta_composition[netaName];
-                if(neta_summary.hasOwnProperty(netaName)){
-                    neta_summary[netaName] += netaQty * qty;
-                    neta_drilldown[netaName].breakdown[key] += netaQty * qty;
-                    // (ここにネタ変の合計ロジックを追加可能)
-                }
-            });
         });
+    });
+    
+    // 最後に、drilldownのbreakdownとchangeTotalを元に、最終的なneta_summaryを計算
+    Object.keys(neta_drilldown).forEach(netaName => {
+        const drilldown = neta_drilldown[netaName];
+        const breakdownTotal = Object.values(drilldown.breakdown).reduce((sum, val) => sum + val, 0);
+        neta_summary[netaName] = breakdownTotal + drilldown.changeTotal;
     });
 
     return { product_summary, other_orders_summary, masters, neta_summary, neta_drilldown };
   }, [apiData]);
+
+  const categoryTotals = useMemo(() => {
+    if (!summaryData) return {};
+    
+    const { neta_summary, masters } = summaryData;
+    const totals = {};
+
+    (masters.netaMaster || []).forEach(neta => {
+      const category = neta.category;
+      // 「その他」カテゴリは集計から除外
+      if (category && category !== 'その他') {
+        if (!totals[category]) {
+          totals[category] = 0;
+        }
+        totals[category] += neta_summary[neta.netaName] || 0;
+      }
+    });
+    
+    return totals;
+  }, [summaryData]);
 
   const productList = summaryData ? Object.keys(summaryData.masters.products) : [];
   const sortedNetaList = useMemo(() => {
@@ -112,14 +164,15 @@ const SummaryPage = () => {
   const otherOrderList = summaryData ? Object.keys(summaryData.other_orders_summary) : [];
   
 
+  
+
   if (configLoading) return <h4>設定データを読み込んでいます...</h4>;
   if (configError) return <h4 style={{color: 'red'}}>エラー: {configError}</h4>;
   
-
   return (
     <div style={{ padding: '1rem', fontFamily: 'Arial, sans-serif' }}>
       <div className="summary-header">
-        <div style={{ flex: 1, textAlign: 'center', fontSize: '24px', fontWeight: 'bold' }}>
+        <div className="summary-header-item">
           <select 
             value={selectedDate} 
             onChange={(e) => setSelectedDate(e.target.value)}
@@ -131,7 +184,7 @@ const SummaryPage = () => {
             ))}
           </select>
         </div>
-        <div style={{ flex: 1, textAlign: 'center', fontSize: '24px', fontWeight: 'bold' }}>
+        <div className="summary-header-item">
           <select 
             value={selectedRoute} 
             onChange={(e) => setSelectedRoute(e.target.value)}
@@ -143,12 +196,11 @@ const SummaryPage = () => {
             ))}
           </select>
         </div>
-      </div>
-
-      <div style={{ textAlign: 'center', margin: '20px 0' }}>
-        <button onClick={handleFetchSummary} disabled={isLoading} className="summary-fetch-button">
+         <div className="summary-header-item">
+         <button onClick={handleFetchSummary} disabled={isLoading} className="summary-fetch-button">
           {isLoading ? '集計中...' : '表示'}
         </button>
+      </div>
       </div>
 
       {error && <p style={{color: 'red', textAlign: 'center'}}>エラー: {error}</p>}
@@ -209,17 +261,27 @@ const SummaryPage = () => {
           </div>
           
           <div className="summary-neta-section">
-            {/* ★ クリックでモーダルを開く */}
-            <div className="neta-table-header" onClick={() => setIsDrilldownOpen(true)} style={{cursor: 'pointer'}}>ネタ数 📖</div>
+            <div className="neta-table-header" onClick={() => setIsDrilldownOpen(true)} style={{cursor: 'pointer'}}>ネタ数</div>
             <table className="summary-table">
+              <thead><tr><th>ネタ名</th><th>必要数</th></tr></thead>
               <tbody>
-                {sortedNetaList.map(neta => (
-                  <tr key={neta.netaName}>
+                {sortedNetaList
+                  .filter(neta => summaryData.neta_summary[neta.netaName] > 0)
+                  .map(neta => (
+                  <tr key={neta.netaName} onClick={() => setIsDrilldownOpen(true)} style={{cursor: 'pointer'}}>
                     <td>{neta.netaName}</td>
-                    <td>{summaryData.neta_summary[neta.netaName] || 0}</td>
+                    <td>{summaryData.neta_summary[neta.netaName]}</td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                {Object.keys(categoryTotals).sort().map(category => (
+                  <tr key={category} style={{fontWeight: 'bold', backgroundColor: '#f2f2f2'}}>
+                    <td>{category} 計</td>
+                    <td>{categoryTotals[category]}</td>
+                  </tr>
+                ))}
+              </tfoot>
             </table>
           </div>
         </div>
@@ -227,5 +289,4 @@ const SummaryPage = () => {
     </div>
   );
 };
-
 export default SummaryPage;

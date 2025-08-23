@@ -12,6 +12,7 @@ const Header = ({ onLogout }) => {
           <a href="./change" className="header-link">注文変更</a>
           <a href="./dashboard" className="header-link">注文一覧</a>
           <a href="./netacounts" className="header-link">ネタ数</a>
+           <a href="./netachange" className="header-link">ネタ変更</a>
           <a href="./allocations" className="header-link">割り当て</a>
           <a href="./settings" className="header-link">設定</a>
           <a href="./Log" className="header-link">変更ログ</a>

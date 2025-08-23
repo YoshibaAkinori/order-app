@@ -1870,30 +1870,48 @@ th {
 /*ネタ数*/
 .summary-header {
   display: flex;
+  align-items: stretch; /* 高さを揃える */
   border: 2px solid #333;
-  max-width: 800px;
+  max-width: 800px; /* 全体の幅 */
   margin: 0 auto 20px auto;
 }
-.summary-select {
-  border: none;
-  background: transparent;
-  font-size: 24px;
-  font-weight: bold;
-  width: 100%;
-  padding: 15px;
-  text-align: center;
-  appearance: none;
-}
-.summary-header > div {
-  flex: 1;
+
+.summary-header-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-right: 1px solid #333;
+  padding: 10px;
 }
-.summary-header > div:last-child {
+
+.summary-header-item:last-child {
   border-right: none;
 }
+
+/* ★★★ ここからが修正箇所 ★★★ */
+.summary-header-item:nth-child(1) {
+  flex: 2; /* 日付選択の幅の比率を「2」に */
+}
+.summary-header-item:nth-child(2) {
+  flex: 2; /* 担当選択の幅の比率を「2」に */
+}
+.summary-header-item:nth-child(3) {
+  flex: 1; /* 表示ボタンの幅の比率を「1」に */
+}
+/* ★★★ ここまでが修正箇所 ★★★ */
+
+.summary-select, .summary-fetch-button {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font-size: 28px; /* 少しフォントサイズを調整 */
+  font-weight: bold;
+  text-align: center;
+}
+
 .summary-fetch-button {
-  padding: 10px 30px;
-  font-size: 16px;
+  background-color: #f0f0f0;
   cursor: pointer;
 }
 .summary-grid-container {
@@ -1965,10 +1983,26 @@ th {
   text-align: center;
   margin-bottom: 0.5rem;
 }
+.summary-up{
+  text-Align: 'center';
+  margin: '20px 0' ;
+}
 
+.summary-controls {
+  display: flex;
+  justify-content: center; /* 全体を中央に寄せる */
+  align-items: center;   /* 高さを中央で揃える */
+  gap: 1.5rem;           /* ★ 各コントロール間の隙間を広げる */
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
 
+.summary-controls label {
+  font-weight: bold;
+}
 
-/* === サイドバー風モーダルのスタイル === */
 
 /* === サイドバー風モーダルのスタイル === */
 
@@ -2036,4 +2070,59 @@ th {
   font-size: 2rem;
   cursor: pointer;
 }
+.neta-change-list { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 1.5rem; 
+}
+.neta-change-card { 
+  border: 1px solid #ccc; 
+  border-radius: 8px; 
+  padding: 1rem; 
+}
+.neta-change-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  border-bottom: 1px solid #eee; 
+  padding-bottom: 0.5rem; 
+  margin-bottom: 1rem; 
+}
+.neta-change-header h3 { 
+  margin: 0; 
+}
+.neta-change-columns { 
+  display: grid; 
+  grid-template-columns: repeat(3, 1fr); 
+  gap: 1rem; 
+}
+.neta-column h4 { 
+  margin-top: 0; 
+}
+.neta-column ul { 
+  list-style-type: none; 
+  padding: 0; 
+  margin: 0; 
+}
 
+/* === 印刷時専用のスタイル === */
+@media print {
+  /* ★ 印刷時でも背景色を強制的に描画させるための設定 */
+  .no-wasabi-label, .no-wasabi-value {
+    -webkit-print-color-adjust: exact; 
+    color-adjust: exact;             
+    background-color: #fde2e4 !important; 
+  }
+
+  .edit-button {
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+    background-color: #007bff !important;
+  }
+
+  .delete-button {
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+    background-color: #dc3545 !important;
+  }
+}
