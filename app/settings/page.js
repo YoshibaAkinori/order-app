@@ -7,6 +7,7 @@ import ProductForm from '../../components/ProductForm';
 import NetaForm from '../../components/NetaForm';
 import AllocationForm from '../../components/AllocationForm';
 import WariateForm from '../../components/WariateForm';
+import YearSelector from '../../components/YearSelector';
 
 export default function ProductAdminPage() {
   const { configuration, netaMaster, loading, error, selectedYear, changeYear, fetchConfiguration } = useConfiguration();
@@ -382,7 +383,7 @@ export default function ProductAdminPage() {
       )}
 
       <div className="admin-controls-container">
-        {yearSelector}
+        <YearSelector /> {/* 年選択コンポーネントを使用 */}
       </div>
       
       {selectedYear ? (

@@ -4,8 +4,6 @@ import { useConfiguration } from './contexts/ConfigurationContext'; // ★ 1. �
 import { Send, Plus, X as CloseIcon, Trash2 } from 'lucide-react';
 import CustomerInfoSection from '../components/CustomerInfoSection';
 import SingleOrderSection from '../components/SingleOrderSection';
-import SidebarInfoSection from '../components/SidebarInfoSection';
-import Header from '../components/Header';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { generateEmailHtml } from '../utils/emailGenerator';
 
@@ -57,11 +55,7 @@ const OrderForm = () => {
   const [manualReceipts, setManualReceipts] = useState([]);
   const [globalNotes, setGlobalNotes] = useState(''); 
 
-  useEffect(() => {
-    if (!selectedYear) {
-      changeYear(new Date().getFullYear());
-    }
-  }, [selectedYear, changeYear]);
+
   
  useEffect(() => {
     if (configuration && orders.length === 0) {
@@ -109,12 +103,6 @@ const OrderForm = () => {
     setGlobalNotes('');
   };
 
-  const handleLogin = () => setIsLoggedIn(true);
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setAllocationNumber('');
-    setReceptionNumber('');
-  };
   
   
   const handleCustomerInfoChange = (e) => {
@@ -411,6 +399,21 @@ const OrderForm = () => {
       // 置き換えられない場合は、元のreceipt（日付のまま）を返す
       return receipt;
     });
+    // paymentGroupsのpaymentDateも、対応する注文番号に書き換える
+    const transformedPaymentGroups = paymentGroupsWithTotals.map(group => {
+      const correspondingOrder = orders.find(o => o.orderDate === group.paymentDate);
+      const correspondingOrderIndex = orders.findIndex(o => o.orderDate === group.paymentDate);
+
+      if (correspondingOrder && correspondingOrderIndex !== -1) {
+        const finalOrderNumber = generateOrderNumber(correspondingOrder, receptionNumber, correspondingOrderIndex);
+        if (finalOrderNumber !== '---') {
+          // paymentDateを注文番号で置き換えた新しいグループオブジェクトを返す
+          return { ...group, paymentDate: finalOrderNumber };
+        }
+      }
+      // 置き換えられない場合は、元のグループをそのまま返す
+      return group;
+    });
 
     const finalData = { 
       selectedYear: selectedYear,
@@ -418,7 +421,7 @@ const OrderForm = () => {
       orders: ordersWithFinalId,
       receptionNumber, 
       allocationNumber, 
-      paymentGroups: paymentGroupsWithTotals, 
+      paymentGroups: transformedPaymentGroups, 
       receipts: transformedReceipts,
       orderType: '新規注文',
       globalNotes: globalNotes,
@@ -483,16 +486,10 @@ const OrderForm = () => {
 
   return (
     <div className="main-container">
-      {isLoggedIn && ( <Header 
-        selectedYear={selectedYear}
-        changeYear={changeYear}
-        onLogout={handleLogout}  
-      /> )}
       {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleSubmit} customerInfo={customerInfo} orders={orders} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts} paymentGroups={paymentGroupsWithTotals} orderType="新規注文" globalNotes={globalNotes}/> )}
-      {isSidebarOpen && ( <> <div className="overlay" onClick={() => setIsSidebarOpen(false)}></div> <div className="sidebar"> <div className="sidebar-header"> <h3>{isLoggedIn ? '店舗情報' : 'ログイン'}</h3> <button onClick={() => setIsSidebarOpen(false)} className="sidebar-close-btn"> <CloseIcon size={24} /> </button> </div> <SidebarInfoSection isLoggedIn={isLoggedIn} onLogin={handleLogin}  /> </div> </> )}
       <div className="main-content">
         <div className="form-container">
-          <div className="form-header"> <h1 className="form-title">注文フォーム</h1> <button onClick={() => setIsSidebarOpen(true)} className="hamburger-menu-btn" title="ログイン/店舗情報"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"> <line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /> </svg> </button> </div>
+          <div className="form-header"> <h1 className="form-title">注文フォーム</h1> </div>
           <div className="order-detail-container">
             <CustomerInfoSection
               formData={customerInfo}

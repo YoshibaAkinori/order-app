@@ -1,46 +1,27 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React from 'react'; // useState, useEffectは不要になったので削除
 
-const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, onLocationSelect　}) => {
-  const [selectedValue, setSelectedValue] = useState('');
+const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, onLocationSelect, allocationNumber }) => {
 
-  
+
+
   const handleSelectChange = (e) => {
-  const prefix = e.target.value;
-  setSelectedValue(prefix);
-  
-  // ★ 修正：常に onLocationSelect を呼び出す
-  onLocationSelect(prefix);
-  
-  // allocationMasterから選択された住所の値を確認
-  const selectedAddress = allocationMaster[prefix]?.address;
-  
-  if (selectedAddress === 'その他') {
-    // 「その他」を選択した場合は、住所欄と階数を同時に初期化
-    const addressEvent = { target: { name: 'address', value: '' } };
-    const floorEvent = { target: { name: 'floorNumber', value: '' } };
-    
-    // 両方を同期的に処理
-    handleInputChange(addressEvent);
-    handleInputChange(floorEvent);
-  }
-  // ★ else文を削除して、常にonLocationSelectが呼ばれるようにした
-};
 
-  const handleAddressChange = (e) => {
-    // 手入力時は選択状態をそのまま維持
-    handleInputChange(e);
+    onLocationSelect(e.target.value);
   };
 
-  // 「その他」に対応するキーを取得
+
   const otherKey = Object.keys(allocationMaster || {}).find(key => allocationMaster[key].address === 'その他');
-  const isOtherSelected = selectedValue === otherKey;
+  
+
+  const isOtherSelected = allocationNumber === otherKey;
 
   return (
     <div className="customer-info-section">
       <h2 className="customer-info-title">発注者の情報</h2>
       <div className="customer-info-container">
         <div className="customer-info-form">
+          {/* 担当者名から法人名までの入力欄は変更ありません */}
           <div className="customer-info-field">
             <label className="customer-info-label">
               担当者名 <span className="required-mark">*</span>
@@ -70,12 +51,13 @@ const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, on
             <input type="text" name="companyName" value={formData.companyName} onChange={handleInputChange} className="customer-info-input" placeholder="県庁 〇〇課" />
           </div>
           
+          {/* 住所ドロップダウン (この部分は変更ありません) */}
           <div className="customer-info-field">
             <label className="customer-info-label">住所</label>
             <select
               onChange={handleSelectChange}
               className="customer-info-input"
-              value={selectedValue}
+              value={allocationNumber}
             >
               <option value="">-- 選択してください --</option>
               {Object.keys(allocationMaster || {}).map(prefix => (
@@ -86,22 +68,22 @@ const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, on
             </select>
           </div>
 
-          {/* その他選択時の手入力欄 */}
-          {isOtherSelected && (
+          {/* 条件に応じた入力欄の表示 (このロジックは生かします) */}
+          {isOtherSelected ? (
+            // 「その他」が選択された場合
             <div className="customer-info-field">
               <label className="customer-info-label">住所詳細</label>
               <input
                 type="text"
                 name="address"
                 value={formData.address}
-                onChange={handleAddressChange}
+                onChange={handleInputChange}
                 className="customer-info-input"
                 placeholder="住所を入力してください"
               />
             </div>
-          )}
-
-          {!isOtherSelected && (
+          ) : (
+            // 「その他」以外が選択された場合
             <div className="customer-info-field">
               <label className="customer-info-label">階数</label>
               <input

@@ -136,10 +136,6 @@ const SingleOrderSection = ({
           />
         )}
       </div>
-        <div className="single-order-field">
-          <label className="single-order-label">配達方法 <span className="required-mark">*</span></label>
-          <select name="deliveryMethod" value={order.deliveryMethod} onChange={handleInputChange} className="single-order-select"> <option value="">選択してください</option> <option value="出前">出前</option> <option value="東口受け取り">東口受け取り</option> <option value="日詰受け取り">日詰受け取り</option> </select>
-        </div>
         <OrderItemsSection orderItems={order.orderItems} handleItemChange={handleItemChange} totalAmount={totalAmountForThisOrder}/>
         <OrderOptionsSection
           order={order}

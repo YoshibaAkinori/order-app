@@ -4,12 +4,11 @@ import { useConfiguration } from '../contexts/ConfigurationContext';
 import { Search, Send, Plus, X as CloseIcon, Trash2 } from 'lucide-react';
 import CustomerInfoSection from '../../components/CustomerInfoSection';
 import SingleOrderSection from '../../components/SingleOrderSection';
-import SidebarInfoSection from '../../components/SidebarInfoSection';
-import Header from '../../components/Header';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import { generateEmailHtml } from '../../utils/emailGenerator';
 
-const ChangeOrderPage = () => {
+const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
+
   const { configuration, loading, error, selectedYear, changeYear } = useConfiguration();
 
   const PRODUCTS = useMemo(() => (configuration?.products || {}), [configuration]);
@@ -18,6 +17,7 @@ const ChangeOrderPage = () => {
   const deliveryDates = useMemo(() => (configuration?.deliveryDates || []), [configuration]);
   const deliveryTimes = useMemo(() => (configuration?.deliveryTimes || []), [configuration]);
   const [globalNotes, setGlobalNotes] = useState('');
+  
 
   const initialCustomerInfo = {
     contactName: '', email: '', fax: '', tel: '', companyName: '',
@@ -43,7 +43,7 @@ const ChangeOrderPage = () => {
     });
   }, [PRODUCTS]);
 
-  const [searchId, setSearchId] = useState('');
+  const [searchId, setSearchId] = useState(initialOrderId || '');
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [customerInfo, setCustomerInfo] = useState(initialCustomerInfo);
@@ -58,12 +58,19 @@ const ChangeOrderPage = () => {
   const [paymentGroups, setPaymentGroups] = useState([]);
   const [isReceiptDetailsOpen, setIsReceiptDetailsOpen] = useState(false);
   const [manualReceipts, setManualReceipts] = useState([]);
+  
 
   useEffect(() => {
     if (!selectedYear) {
       changeYear(new Date().getFullYear());
     }
   }, [selectedYear, changeYear]);
+
+  useEffect(() => {
+    if (initialOrderId) {
+      handleSearch();
+    }
+  }, [initialOrderId]);
 
   const getDocumentType = useCallback((paymentMethod) => {
     if (['現金', 'クレジットカード'].includes(paymentMethod)) return '領収書';
@@ -86,24 +93,6 @@ const ChangeOrderPage = () => {
     setGlobalNotes('');
   };
 
-  const handleLogin = () => setIsLoggedIn(true);
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setAllocationNumber('');
-    setReceptionNumber('');
-  };
-
-  const handleAllocationChange = (prefix) => {
-    setAllocationNumber(prefix);
-    const allocationData = ALLOCATION_MASTER[prefix];
-    if (allocationData) {
-      if (orders.length > 0 && !orders[0].deliveryAddress) {
-        const updatedOrders = [...orders];
-        updatedOrders[0].deliveryAddress = allocationData.address;
-        setOrders(updatedOrders);
-      }
-    }
-  };
 
   const handleSearch = async () => {
     if (!searchId) {
@@ -173,7 +162,6 @@ const ChangeOrderPage = () => {
 
       setOrders(loadedOrders);
       setIsDataLoaded(true);
-      setOriginalOrderType(data.orderType || '不明');
     } catch (error) {
       alert(`エラー: ${error.message}`);
     } finally {
@@ -208,6 +196,22 @@ const ChangeOrderPage = () => {
       // 置き換えられない場合は、元のreceipt（日付のまま）を返す
       return receipt;
     });
+    // paymentGroupsのpaymentDateも、対応する注文番号に書き換える
+    const transformedPaymentGroups = paymentGroupsWithTotals.map(group => {
+      // ★ 変更点: group.paymentDateには order.id が入っているため、IDで注文を検索します。
+      const correspondingOrder = orders.find(o => o.id === parseInt(group.paymentDate, 10));
+      const correspondingOrderIndex = orders.findIndex(o => o.id === parseInt(group.paymentDate, 10));
+
+      if (correspondingOrder && correspondingOrderIndex !== -1) {
+        const finalOrderNumber = generateOrderNumber(correspondingOrder, receptionNumber, correspondingOrderIndex);
+        if (finalOrderNumber !== '---') {
+          // paymentDateを注文番号で置き換えた新しいグループオブジェクトを返す
+          return { ...group, paymentDate: finalOrderNumber };
+        }
+      }
+  // 置き換えられない場合は、元のグループをそのまま返す
+    return group;
+  });
 
     const updatedData = {
       selectedYear: selectedYear,
@@ -215,7 +219,7 @@ const ChangeOrderPage = () => {
       orders: ordersWithFinalId,
       receptionNumber, 
       allocationNumber, 
-      paymentGroups: paymentGroupsWithTotals, 
+      paymentGroups: transformedPaymentGroups, 
       receipts: transformedReceipts,
       orderType: '変更',
       globalNotes: globalNotes,
@@ -233,7 +237,11 @@ const ChangeOrderPage = () => {
       }
       setIsConfirmationOpen(false);
       alert('注文内容を正常に更新しました。');
-      resetForm();
+      if (isModalMode && typeof onClose === 'function') {
+        onClose();
+      } else {
+        resetForm();
+      }
     } catch (error) {
       console.error('注文の更新中にエラーが発生しました:', error);
       alert(`エラー: ${error.message}`);
@@ -367,20 +375,26 @@ const ChangeOrderPage = () => {
       const autoGeneratedReceipts = paymentGroupsWithTotals.map(group => {
         const docType = getDocumentType(customerInfo.paymentMethod) || '領収書';
         const existingReceipt = manualReceipts.find(r => r.id === group.id);
-  
-        return {
-          id: group.id,
-          groupId: group.id, // グループと連動している目印
-          documentType: docType,
-          issueDate: group.paymentDate,
-          recipientName: customerInfo.invoiceName,
-          // 手動で金額が編集されていればその値を維持し、そうでなければ自動計算された合計額を使う
-          amount: (existingReceipt && existingReceipt.isAmountManuallyEdited)
-                    ? existingReceipt.amount
-                    : group.total,
-          isAmountManuallyEdited: (existingReceipt && existingReceipt.isAmountManuallyEdited) || false,
-        };
-      });
+
+        // ★ group.paymentDate (ここには order.id が入っています) を使って、
+        // 対応する注文オブジェクトを検索します。
+        const correspondingOrder = orders.find(o => o.id === parseInt(group.paymentDate, 10));
+
+      return {
+        id: group.id,
+        groupId: group.id,
+        documentType: docType,
+        // ★ 対応する注文の日付を発行日として設定します。
+        issueDate: correspondingOrder ? correspondingOrder.orderDate : '',
+        // ★ 対応する注文のIDを orderId として明確に保持させます。
+        orderId: correspondingOrder ? correspondingOrder.id : null,
+        recipientName: customerInfo.invoiceName,
+        amount: (existingReceipt && existingReceipt.isAmountManuallyEdited)
+              ? existingReceipt.amount
+              : group.total,
+              isAmountManuallyEdited: (existingReceipt && existingReceipt.isAmountManuallyEdited) || false,
+      };
+    });
   
       // 4. 自動生成されたリストと、完全に手動のリストを結合
       const newFinalReceipts = [...autoGeneratedReceipts, ...purelyManualReceipts];
@@ -423,9 +437,10 @@ const ChangeOrderPage = () => {
 
   const handleToggleReceiptDetails = () => setIsReceiptDetailsOpen(prev => !prev);
   const addReceipt = () => {
-    const newReceipt = { id: Date.now(), issueDate: '', recipientName: '', amount: '', documentType: '領収書' };
-    setManualReceipts(prev => [...prev, newReceipt]);
-  };
+  // newReceiptオブジェクトに `orderId: ''` を追加します
+  const newReceipt = { id: Date.now(), orderId: '', issueDate: '', recipientName: '', amount: '', documentType: '領収書' };
+  setManualReceipts(prev => [...prev, newReceipt]);
+};
   const removeReceipt = (receiptId) => setManualReceipts(prev => prev.filter(r => r.id !== receiptId));
   const updateReceipt = (receiptId, field, value) => {
     setManualReceipts(prev => prev.map(r => {
@@ -464,13 +479,17 @@ const ChangeOrderPage = () => {
   }
   try {
     const day = order.orderDate.split('/')[2].padStart(2, '0');
-    const orderSequence = (index + 1).toString();
-    return `${day}${receptionNum}${orderSequence}`;
+    
+    // sequenceを決定（既存ならそれ、なければidの下3桁を使う）
+    const sequence = order.sequence !== undefined ? order.sequence : index + 1;
+    
+    return `${day}${receptionNum}${sequence}`;
   } catch (e) {
     console.error("Date format error:", order.orderDate);
     return '---';
   }
 };
+
 
   const uniqueOrderDates = [...new Set(orders.map(o => o.orderDate).filter(Boolean))];
   
@@ -479,15 +498,11 @@ const ChangeOrderPage = () => {
   if (!configuration) return <h4>表示する設定年を選択してください。</h4>;
 
   return (
-    <div className="main-container">
-      {isLoggedIn && ( <Header 
-        onLogout={handleLogout}  
-      /> )}
+    <div className={isModalMode ? "modal-page-container" : "main-container"}>
       {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleUpdate} customerInfo={customerInfo} orders={orders} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts} paymentGroups={paymentGroupsWithTotals} orderType="変更" globalNotes={globalNotes}/> )}
-      {isSidebarOpen && ( <> <div className="overlay" onClick={() => setIsSidebarOpen(false)}></div> <div className="sidebar"> <div className="sidebar-header"> <h3>{isLoggedIn ? '店舗情報' : 'ログイン'}</h3> <button onClick={() => setIsSidebarOpen(false)} className="sidebar-close-btn"> <CloseIcon size={24} /> </button> </div> <SidebarInfoSection isLoggedIn={isLoggedIn} onLogin={handleLogin} allocationNumber={allocationNumber}  /> </div> </> )}
       <div className="main-content">
         <div className="form-container">
-          <div className="form-header"> <h1 className="form-title">注文変更</h1> <button onClick={() => setIsSidebarOpen(true)} className="hamburger-menu-btn" title="ログイン/店舗情報"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"> <line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /> </svg> </button> </div>
+          <div className="form-header"> <h1 className="form-title">注文変更</h1> </div>
           <div className="search-container">
             <input type="text" value={searchId} onChange={(e) => setSearchId(e.target.value.toUpperCase())} className="search-input" placeholder="受付番号 (A2A) または注文番号 (25A2A1) を入力" />
             <button onClick={handleSearch} className="search-button" disabled={isLoading}> <Search size={20} /> {isLoading ? '検索中...' : '検索'} </button>
@@ -499,6 +514,7 @@ const ChangeOrderPage = () => {
               handleInputChange={handleCustomerInfoChange}
               allocationMaster={ALLOCATION_MASTER}
               onLocationSelect={handleLocationSelect}
+              allocationNumber={allocationNumber} 
         />
             {orders.map((order, index) => {
               const orderNumberDisplay = order.orderId || '（新規追加）';
@@ -546,24 +562,28 @@ const ChangeOrderPage = () => {
                             </div>
                             <div className="combined-payment-field">
                               <label className="combined-payment-label">支払日</label>
-                              <select value={group.paymentDate} onChange={(e) => updatePaymentGroup(group.id, 'paymentDate', e.target.value)} className="combined-payment-select" >
+                              <select
+                                value={group.paymentDate} 
+                                onChange={(e) => updatePaymentGroup(group.id, 'paymentDate', e.target.value)} 
+                              >
                                 <option value="">支払日を選択</option>
-                                {orders.map((order, index) => (
-                                  // 日付が設定されている注文のみをオプションとして表示
-                                  order.orderDate && (
-                                  <option key={order.id} value={order.orderDate}>
-                                   注文#{index + 1} ({order.orderDate})
-                                  </option>
-                                 )
-                                ))}
+                                  {orders.map((order, index) => (
+                                    <option key={order.id} value={order.id}>
+                                    注文#{index + 1} ({order.orderDate || '日付未定'})
+                                </option>
+                              ))}
                               </select>
                             </div>
                             <div className="order-checklist-container">
                               <p>この日にお支払いをする注文を選択:</p>
-                              {orders.map(order => (
+                              {orders.map((order, orderIndex) => (
                                 <div key={order.id} className="order-checklist-item">
                                   <input type="checkbox" id={`order-check-${group.id}-${order.id}`} checked={!!group.checkedOrderIds[order.id]} onChange={() => handleGroupOrderCheck(group.id, order.id)} />
-                                  <label htmlFor={`order-check-${group.id}-${order.id}`}> {generateOrderNumber(order, receptionNumber, index)} ({order.orderDate || '日付未定'}) - ¥{calculateOrderTotal(order).toLocaleString()} </label>
+                                  <label htmlFor={`order-check-${group.id}-${order.id}`}>
+                                    {/* ★★★ ここも同様に修正 ★★★ */}
+                                    {order.orderId || generateOrderNumber(order, receptionNumber, orderIndex)}
+                                    ({order.orderDate || '日付未定'}) - ¥{calculateOrderTotal(order).toLocaleString()}
+                                  </label>
                                 </div>
                               ))}
                             </div>
@@ -584,51 +604,57 @@ const ChangeOrderPage = () => {
                   <button type="button" onClick={handleToggleReceiptDetails} className="payment-option-title-button"> ・領収書・請求書の詳細指定 </button>
                   {isReceiptDetailsOpen && (
                     <div className="receipt-details-container">
-                      <div className="receipt-groups-container">
-                        {manualReceipts.map((receipt, index) => (
-                          <div key={receipt.id} className="receipt-group">
-                            <div className="receipt-group-header">
-                              <h4>詳細 #{index + 1}</h4>
-                              <button onClick={() => removeReceipt(receipt.id)} className="remove-group-btn"><Trash2 size={16} /></button>
-                            </div>
-                            <div className="receipt-input-grid">
-                              <div className="combined-payment-field">
-                                <label className="combined-payment-label">種別</label>
-                                <select className="combined-payment-select" value={receipt.documentType} onChange={(e) => updateReceipt(receipt.id, 'documentType', e.target.value)} >
-                                  <option value="領収書">領収書</option>
-                                  <option value="請求書">請求書</option>
-                                </select>
-                              </div>
-                              <div className="combined-payment-field">
-                                <label className="combined-payment-label">発行日</label>
-                                <select className="combined-payment-select" value={receipt.issueDate} onChange={(e) => updateReceipt(receipt.id, 'issueDate', e.target.value)}>
-                                  <option value="">発行日を選択</option>
-                                  {orders.map((order, index) => (
-                                  // 日付が設定されている注文のみをオプションとして表示
-                                  order.orderDate && (
-                                  <option key={order.id} value={order.orderDate}>
-                                   注文#{index + 1} ({order.orderDate})
-                                  </option>
-                                 )
-                                ))}
-                                </select>
-                              </div>
-                              <div className="combined-payment-field">
-                                <label className="combined-payment-label">宛名</label>
-                                <input type="text" className="payment-info-input" placeholder="株式会社○○○" value={receipt.recipientName} onChange={(e) => updateReceipt(receipt.id, 'recipientName', e.target.value)} />
-                              </div>
-                              <div className="combined-payment-field">
-                                <label className="combined-payment-label">金額</label>
-                                <input type="number" className="payment-info-input" placeholder="0" value={receipt.amount} onChange={(e) => updateReceipt(receipt.id, 'amount', e.target.value)} />
-                              </div>
-                            </div>
+                    <div className="receipt-groups-container">
+        
+                    {manualReceipts.map((receipt, index) => (
+                      <div key={receipt.id} className="receipt-group">
+                        <div className="receipt-group-header">
+                          <h4>詳細 #{index + 1}</h4>
+                          <button onClick={() => removeReceipt(receipt.id)} className="remove-group-btn"><Trash2 size={16} /></button>
+                        </div>
+                        <div className="receipt-input-grid">
+                          <div className="combined-payment-field">
+                            <label className="combined-payment-label">種別</label>
+                              <select className="combined-payment-select" value={receipt.documentType} onChange={(e) => updateReceipt(receipt.id, 'documentType', e.target.value)} >
+                                <option value="領収書">領収書</option>
+                                <option value="請求書">請求書</option>
+                              </select>
                           </div>
-                        ))}
+              
+                          <div className="combined-payment-field">
+                            <label className="combined-payment-label">紐付ける注文</label>
+                            <select 
+                              className="combined-payment-select" 
+                              value={receipt.orderId || ''}  // `receipt` を使って orderId を参照
+                              onChange={(e) => updateReceipt(receipt.id, 'orderId', e.target.value)}
+                            >
+                            <option value="">注文を選択</option>
+                              {orders.map((order, index) => (
+                                order.orderDate && (
+                              <option key={order.id} value={order.id}>
+                                注文#{index + 1} ({order.orderDate})
+                              </option>
+                              )
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="combined-payment-field">
+                            <label className="combined-payment-label">宛名</label>
+                            <input type="text" className="payment-info-input" placeholder="株式会社○○○" value={receipt.recipientName} onChange={(e) => updateReceipt(receipt.id, 'recipientName', e.target.value)} />
+                          </div>
+                          <div className="combined-payment-field">
+                            <label className="combined-payment-label">金額</label>
+                            <input type="number" className="payment-info-input" placeholder="0" value={receipt.amount} onChange={(e) => updateReceipt(receipt.id, 'amount', e.target.value)} />
+                          </div>
+                        </div>
                       </div>
-                      <button onClick={addReceipt} className="add-group-btn"> <Plus size={16} /> 領収書/請求書を追加 </button>
-                    </div>
-                  )}
-                 </div>
+                    ))}
+                  </div>
+                  <button onClick={addReceipt} className="add-group-btn"> <Plus size={16} /> 領収書/請求書を追加 </button>
+                </div>
+                )}
+              </div>
               </div>
             </div>
             <div className="notes-section">

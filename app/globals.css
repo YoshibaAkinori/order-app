@@ -2126,3 +2126,168 @@ th {
     background-color: #dc3545 !important;
   }
 }
+/* === 注文一覧ページのコントロールバー === */
+.list-controls {
+  display: flex;
+  justify-content: space-between; /* 両端に寄せる */
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.filters, .search-and-export {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* 各コントロール間の隙間 */
+}
+
+.list-controls select, .list-controls input, .list-controls button {
+  padding: 8px 12px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.list-controls button {
+  background-color: #f0f0f0;
+  cursor: pointer;
+  white-space: nowrap; /* 文字が改行しないように */
+}
+
+.list-controls input[type="text"] {
+  min-width: 200px; /* 検索欄の幅 */
+}
+
+/* === 注文一覧テーブルのスタイル（参考） === */
+.order-list-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.order-list-table th, .order-list-table td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+}
+.order-list-table th {
+  background-color: #f2f2f2;
+}
+.link-button {
+  background: none;
+  border: none;
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+.modal-page-container {
+  /* モーダル内でスクロールができるように */
+  height: calc(90vh - 100px); /* (ヘッダーの高さを引くなど、微調整が必要) */
+  overflow-y: auto;
+}
+
+/* === 共通ヘッダー === */
+.shared-header {
+  position: sticky;
+  top: 0;
+  background-color: #ffffff;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  z-index: 900;
+  display: flex; /* ★ Flexboxを有効化 */
+  justify-content: flex-end; /* ★ 右寄せにする */
+}
+
+.main-page-content {
+  padding: 1rem;
+}
+
+/* === 共通サイドバーナビゲーション (あなたのCSSを活かす) === */
+.sidebar a {
+  display: block;
+  color: #1f2937;
+  padding: 1rem;
+  text-decoration: none;
+  font-size: 1.1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.sidebar a:hover {
+  background-color: #f3f4f6;
+}
+
+.logout-button-sidebar {
+  width: 100%;
+  padding: 1rem;
+  background-color: #c82333;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.logout-button-sidebar:hover {
+  background-color: #a51c2a;
+}
+.login-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 80vh;
+  color: #666;
+}
+
+/* サイドバーの年選択セクション */
+.sidebar-year-section {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 1rem;
+}
+
+.sidebar-year-label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+/* サイドバー内のYearSelectorのスタイル調整 */
+.sidebar-year-section select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background-color: white;
+}
+
+.sidebar-year-section select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* YearSelectorコンポーネントのスタイル */
+.year-selector-dropdown {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+  min-width: 200px;
+}
+
+.year-selector-dropdown:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* サイドバー内での調整（既存のスタイルを上書き） */
+.sidebar-year-section .year-selector-dropdown {
+  width: 100%;
+  font-size: 0.9rem;
+  min-width: auto;
+}

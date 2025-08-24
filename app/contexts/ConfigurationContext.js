@@ -1,59 +1,77 @@
 "use client";
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { getCurrentUser, signOut } from 'aws-amplify/auth';
 
 const ConfigurationContext = createContext();
 
 const EMPTY_CONFIG_TEMPLATE = {
-  products: {},
-  specialMenus: {},
-  sideMenus: {},
-  deliveryDates: [],
-  deliveryTimes: [],
-  allocationMaster: {},
+  products: {}, specialMenus: {}, sideMenus: {},
+  deliveryDates: [], deliveryTimes: [], allocationMaster: {},
+  deliveryWariate: [], netaMaster: []
 };
 
 export const ConfigurationProvider = ({ children }) => {
   const [configuration, setConfiguration] = useState(null);
   const [netaMaster, setNetaMaster] = useState([]);
-  const [loading, setLoading] = useState(false); // ★ 初期値はfalseが良い
+  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true); // 認証チェック専用のローディング状態
   const [error, setError] = useState(null);
+  const [selectedYear, setSelectedYear] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const [selectedYear, setSelectedYear] = useState(() => {
-    // ページロード時にlocalStorageから前回の値を取得
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('selectedYear') || null;
-    }
-    return null;
-  });
+  useEffect(() => {
+    // ページロード時にCognitoのセッションとlocalStorageの年を確認
+    const checkAuthAndLoadData = async () => {
+      try {
+        console.log('=== 認証チェック開始 ===');
+        await getCurrentUser();
+        console.log('✅ ユーザー認証済み');
+        setIsLoggedIn(true);
+        
+        const savedYear = localStorage.getItem('selectedYear');
+        if (savedYear) {
+          setSelectedYear(savedYear);
+        } else {
+          setLoading(false); // 年が未選択なので、データローディングを終える
+        }
+      } catch (error) {
+        console.log('❌ ユーザー未認証:', error.message);
+        setIsLoggedIn(false);
+        setLoading(false);
+      } finally {
+        setAuthLoading(false); // 認証チェック完了
+        console.log('=== 認証チェック完了 ===');
+      }
+    };
+    checkAuthAndLoadData();
+  }, []);
 
   const fetchConfiguration = async (year) => {
     setLoading(true);
     setError(null);
     try {
-      const [configResponse, netaResponse] = await Promise.all([
+      const [configResponse, netaResponse] = await Promise.allSettled([
         fetch(`https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/configurations/${year}`),
         fetch(`https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/neta-master`)
       ]);
 
-      if (netaResponse.ok) {
-        const netaData = await netaResponse.json();
-        const sortedNeta = netaData.sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
-        setNetaMaster(sortedNeta);
-      } else if (netaResponse.status === 404) {
+      if (netaResponse.status === 'fulfilled' && netaResponse.value.ok) {
+        const netaData = await netaResponse.value.json();
+        setNetaMaster(netaData.sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999)));
+      } else if (netaResponse.status === 'fulfilled' && netaResponse.value.status === 404) {
         setNetaMaster([]);
       } else {
         throw new Error('ネタマスタの取得に失敗しました。');
       }
       
-      if (configResponse.ok) {
-        const configData = await configResponse.json();
+      if (configResponse.status === 'fulfilled' && configResponse.value.ok) {
+        const configData = await configResponse.value.json();
         setConfiguration(configData);
-      } else if (configResponse.status === 404) {
+      } else if (configResponse.status === 'fulfilled' && configResponse.value.status === 404) {
         setConfiguration({ ...EMPTY_CONFIG_TEMPLATE, configYear: null });
       } else {
         throw new Error('設定データの取得に失敗しました。');
       }
-
     } catch (err) {
       setConfiguration(null);
       setNetaMaster([]);
@@ -64,21 +82,50 @@ export const ConfigurationProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    if (selectedYear) {
+    if (selectedYear && isLoggedIn) {
       fetchConfiguration(selectedYear);
     }
-  }, [selectedYear]);
+  }, [selectedYear, isLoggedIn]);
 
   const changeYear = (year) => {
-    if (typeof window !== 'undefined') {
-      // localStorageに新しい値を保存
-      localStorage.setItem('selectedYear', year);
-    }
+    console.log('=== changeYear呼び出し ===');
+    console.log('新しい年:', year);
+    localStorage.setItem('selectedYear', year);
     setSelectedYear(year);
+    // データの強制リセットを追加
+    setConfiguration(null);
+    setNetaMaster([]);
+    setError(null);
   };
   
-  // ★★★ この行に `fetchConfiguration` を追加 ★★★
-  const value = { configuration, loading, error, selectedYear, changeYear, fetchConfiguration, netaMaster };
+  const login = () => setIsLoggedIn(true);
+
+  const logout = async () => {
+    try {
+      await signOut();
+      setIsLoggedIn(false);
+      // ログアウト時に他の状態もリセット
+      setSelectedYear(null);
+      setConfiguration(null);
+      localStorage.removeItem('selectedYear');
+    } catch (error) {
+      console.error('Error signing out: ', error);
+    }
+  };
+  
+  const value = { 
+    configuration, 
+    netaMaster, 
+    loading, 
+    authLoading, // 認証ローディング状態を追加
+    error, 
+    selectedYear, 
+    changeYear, 
+    fetchConfiguration, 
+    isLoggedIn, 
+    login, 
+    logout 
+  };
 
   return (
     <ConfigurationContext.Provider value={value}>

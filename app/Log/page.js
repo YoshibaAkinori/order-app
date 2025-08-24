@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
-import Header from '../../components/Header';
 import LogEntry from '../../components/LogEntry';
 import { useConfiguration } from '../contexts/ConfigurationContext';
 
@@ -58,12 +57,6 @@ const ChangeLogPage = () => {
 
   return (
     <div className="main-container">
-      <Header
-        selectedYear={selectedYear}
-        changeYear={changeYear}
-        onAllocationChange={(e) => handleAllocationChange(e.target.value)}
-        ALLOCATION_MASTER={ALLOCATION_MASTER}
-      />
       <div className="main-content">
         <div className="form-container">
           <div className="form-header">
