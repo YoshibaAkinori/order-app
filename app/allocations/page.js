@@ -17,6 +17,7 @@ const AllocationPage = () => {
   const deliveryDates = useMemo(() => (configuration?.deliveryDates || []), [configuration]);
   const allocationMaster = useMemo(() => (configuration?.allocationMaster || {}), [configuration]);
   const deliveryRoutes = useMemo(() => (configuration?.deliveryRoutes || []), [configuration]);
+  const deliveryWariate = useMemo(() => (configuration?.deliveryWariate || []), [configuration]);
 
   useEffect(() => {
     if (orders.length > 0) {
@@ -131,10 +132,9 @@ const AllocationPage = () => {
     });
   };
   
-  const summaryTotals = useMemo(() => {
+  const summaryTotalsByRoute = useMemo(() => {
     const summary = {};
     deliveryRoutes.forEach(route => summary[route] = 0);
-
     Object.keys(groupedByFloor).forEach(prefix => {
       Object.keys(groupedByFloor[prefix]).forEach(floor => {
         const floorKey = `${prefix}-${floor}`;
@@ -145,8 +145,6 @@ const AllocationPage = () => {
         }
       });
     });
-
-    // ★ 個別対応の注文も集計に含める
     exceptionOrders.forEach(order => {
       const assignedRoute = assignments[order.orderId];
       if (assignedRoute) {
@@ -154,9 +152,30 @@ const AllocationPage = () => {
         summary[assignedRoute] += totalQuantity;
       }
     });
-
     return summary;
   }, [groupedByFloor, exceptionOrders, assignments, deliveryRoutes]);
+
+
+  const summaryTotalsByWariate = useMemo(() => {
+    const wariateTotals = {};
+    (deliveryWariate || []).forEach(w => wariateTotals[w.name] = 0);
+
+    const routeToWariateMap = {};
+    (deliveryWariate || []).forEach(w => {
+      (w.responsibleRoutes || []).forEach(r => {
+        routeToWariateMap[r] = w.name;
+      });
+    });
+
+    Object.keys(summaryTotalsByRoute).forEach(route => {
+      const wariateName = routeToWariateMap[route];
+      if (wariateName) {
+        wariateTotals[wariateName] += summaryTotalsByRoute[route];
+      }
+    });
+    
+    return wariateTotals;
+  }, [summaryTotalsByRoute, deliveryWariate]);
 
   const toggleDetails = (prefix) => {
     setExpandedPrefix(prev => (prev === prefix ? null : prefix));
@@ -310,10 +329,22 @@ const AllocationPage = () => {
             <h3>結果</h3>
             <table className='allocation-table'>
               <tbody>
-                {Object.keys(summaryTotals).map(route => (
+                {Object.keys(summaryTotalsByRoute).map(route => (
                   <tr key={route}>
                     <td>{route}</td>
-                    <td>{summaryTotals[route]}</td>
+                    <td>{summaryTotalsByRoute[route]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <h3 style={{marginTop: '2rem'}}>割り当て別 合計</h3>
+            <table className='allocation-table'>
+              <tbody>
+                {Object.keys(summaryTotalsByWariate).map(wariateName => (
+                  <tr key={wariateName}>
+                    <td>{wariateName}</td>
+                    <td>{summaryTotalsByWariate[wariateName]}</td>
                   </tr>
                 ))}
               </tbody>
