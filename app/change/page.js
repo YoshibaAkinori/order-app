@@ -48,7 +48,6 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [customerInfo, setCustomerInfo] = useState(initialCustomerInfo);
   const [orders, setOrders] = useState([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPaymentOptionsOpen, setIsPaymentOptionsOpen] = useState(false);
   const [isCombinedPaymentSummaryOpen, setIsCombinedPaymentSummaryOpen] = useState(false);
   const [allocationNumber, setAllocationNumber] = useState('');
