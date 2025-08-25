@@ -50,7 +50,7 @@ const ConfirmationModal = ({
         <div className="confirmation-content">
           <div id="printable-area">
             <div className="confirmation-document compact">
-              <header className="conf-doc-header"> <div className="conf-logo">松栄寿し</div> <div className="conf-doc-title"> <h1>注文確認書</h1> <p>受付番号: {receptionNumber || '-----'}</p> {/* ★ 注文の種類を表示 */}
+              <header className="conf-doc-header"> <div className="conf-logo">松栄寿し</div> <div className="conf-doc-title"> <h1>注文確認書</h1> <p>受付番号: {receptionNumber || '-----'}</p> 
                 <p>注文の種類: {orderType || '新規注文'}</p></div> </header>
               <section className="conf-section"> <p className="conf-current-date">{new Date().toLocaleDateString('ja-JP')} 現在、以下の内容でご注文を受付けております。</p> </section>
               <section className="conf-section">
@@ -99,7 +99,7 @@ const ConfirmationModal = ({
                       <tr><td colSpan="3">小計</td><td>¥{calculateOrderTotal(order).toLocaleString()}</td></tr>
                     </tfoot>
                   </table>
-                  {/* ★★★ 個別支払い時の表示ブロックを修正 ★★★ */}
+                  {/* 個別支払い時の表示 */}
                   {(paymentGroups || []).length <= 0 && (
                     <div className="conf-per-order-payment-details">
                       <div className="conf-order-total">
@@ -117,17 +117,27 @@ const ConfirmationModal = ({
                         <div className="conf-grid-item">
                           <div className="conf-grid-item">
                             {(() => {
-                              const paymentOrder = orders.find(o => o.id === parseInt(group.paymentDate, 10));
-                              const paymentOrderIndex = paymentOrder ? orders.findIndex(o => o.id === paymentOrder.id) : -1;
-  
-                              // 対応する注文が見つかれば注文番号を生成、なければ「未定」
-                              const displayOrderNumber = (paymentOrder && paymentOrderIndex !== -1)
-                              ? generateOrderNumber(paymentOrder, receptionNumber, paymentOrderIndex)
-                              : '（注文未定）';
+                              // 修正: group.paymentDateがorder.idの場合の処理
+                              let paymentOrder, paymentOrderIndex, displayOrderNumber;
+                              
+                              if (group.paymentDate && !isNaN(parseInt(group.paymentDate))) {
+                                // paymentDateがorder.idの場合
+                                paymentOrder = orders.find(o => o.id === parseInt(group.paymentDate, 10));
+                                paymentOrderIndex = paymentOrder ? orders.findIndex(o => o.id === paymentOrder.id) : -1;
+                              } else {
+                                // paymentDateが日付文字列の場合
+                                paymentOrder = orders.find(o => o.orderDate === group.paymentDate);
+                                paymentOrderIndex = paymentOrder ? orders.findIndex(o => o.orderDate === group.paymentDate) : -1;
+                              }
 
-                            return (
-                              <div className="conf-label">支払グループ #{index + 1} (お支払いする注文番号: {displayOrderNumber})</div>
-                            );
+                              // 対応する注文が見つかれば注文番号を生成、なければ「未定」
+                              displayOrderNumber = (paymentOrder && paymentOrderIndex !== -1)
+                                ? generateOrderNumber(paymentOrder, receptionNumber, paymentOrderIndex)
+                                : '（注文未定）';
+
+                              return (
+                                <div className="conf-label">支払グループ #{index + 1} (お支払いする注文番号: {displayOrderNumber})</div>
+                              );
                             })()}
                             <div className="conf-value-order">
                               対象注文: {
@@ -161,42 +171,36 @@ const ConfirmationModal = ({
                   <h2 className="conf-order-title">領収書・請求書 詳細</h2>
                   <table className="conf-items-table">
                     <thead><tr><th>種別</th><th>発行日</th><th>宛名</th><th>金額</th></tr></thead>
-                    {/* 変更箇所: 領収書・請求書詳細テーブルの<tbody> */}
                     <tbody>
-  {receipts.map(receipt => {
-    // 変更点①: `receipt.issueDate`（日付）ではなく `receipt.orderId` で注文を検索します。
-    // これにより、注文が一意に特定されます。
-    const correspondingOrder = receipt.orderId 
-      ? orders.find(o => o.id === parseInt(receipt.orderId, 10)) 
-      : null;
-    const correspondingOrderIndex = correspondingOrder 
-      ? orders.findIndex(o => o.id === correspondingOrder.id) 
-      : -1;
+                      {receipts.map(receipt => {
+                        // 修正: 領収書の発行日表示ロジック
+                        let displayDate = receipt.issueDate || '(未指定)';
+                        
+                        // issueDateが日付形式の場合、対応する注文番号を探して表示
+                        if (receipt.issueDate && receipt.issueDate.includes('/')) {
+                          const correspondingOrder = orders.find(o => o.orderDate === receipt.issueDate);
+                          const correspondingOrderIndex = correspondingOrder 
+                            ? orders.findIndex(o => o.id === correspondingOrder.id) 
+                            : -1;
 
-    // 変更点②: 表示用のテキストを準備します。
-    // まずは紐づく注文の日付をデフォルトとします。
-    let displayDate = (correspondingOrder ? correspondingOrder.orderDate : receipt.issueDate) || '(未指定)';
+                          if (correspondingOrder && correspondingOrderIndex !== -1) {
+                            const orderNumber = generateOrderNumber(correspondingOrder, receptionNumber, correspondingOrderIndex);
+                            if (orderNumber !== '---') {
+                              displayDate = orderNumber;
+                            }
+                          }
+                        }
 
-    // 変更点③: 注文が見つかった場合、表示用テキストを「注文番号」で上書きします。
-    if (correspondingOrder && correspondingOrderIndex !== -1) {
-        const orderNumber = generateOrderNumber(correspondingOrder, receptionNumber, correspondingOrderIndex);
-        if (orderNumber !== '---') {
-            // 添付画像のように、発行日の欄に注文番号を表示します。
-            displayDate = orderNumber;
-        }
-    }
-
-    return (
-        <tr key={receipt.id}>
-            <td>{receipt.documentType}</td>
-            {/* 変更点④: 最終的に生成された表示用テキストを表示します。 */}
-            <td>{displayDate}</td>
-            <td>{receipt.recipientName || '(未指定)'}</td>
-            <td>¥{(parseInt(receipt.amount, 10) || 0).toLocaleString()}</td>
-        </tr>
-    );
-  })}
-</tbody>
+                        return (
+                          <tr key={receipt.id}>
+                            <td>{receipt.documentType}</td>
+                            <td>{displayDate}</td>
+                            <td>{receipt.recipientName || '(未指定)'}</td>
+                            <td>¥{(parseInt(receipt.amount, 10) || 0).toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
                   </table>
                 </section>
               )}
