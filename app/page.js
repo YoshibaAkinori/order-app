@@ -274,10 +274,10 @@ const OrderForm = () => {
                   : group.total,
           // 発行日は手動編集されている場合は既存値を保持、そうでなければ自動設定
           issueDate: existingReceipt.isIssueDateManuallyEdited 
-                     ? existingReceipt.issueDate
-                     : ((group.paymentDate && correspondingOrder && correspondingOrder.orderDate) 
-                        ? correspondingOrder.orderDate 
-                        : existingReceipt.issueDate || ''),
+            ? existingReceipt.issueDate
+            : ((group.paymentDate) // group.paymentDateはorder.idなので、そのまま使う
+              ? group.paymentDate
+              : existingReceipt.issueDate || ''),
         };
       }
 
@@ -286,9 +286,7 @@ const OrderForm = () => {
         id: group.id,
         groupId: group.id, // グループと連動している目印
         documentType: docType,
-        issueDate: (group.paymentDate && correspondingOrder && correspondingOrder.orderDate) 
-                   ? correspondingOrder.orderDate 
-                   : '',
+        issueDate: group.paymentDate || '',
         recipientName: customerInfo.invoiceName,
         amount: group.total,
         isAmountManuallyEdited: false,
@@ -626,12 +624,13 @@ const OrderForm = () => {
                             </div>
                             <div className="order-checklist-container">
                               <p>この日にお支払いをする注文を選択:</p>
-                              {orders.map(order => (
-                                <div key={order.id} className="order-checklist-item">
-                                  <input type="checkbox" id={`order-check-${group.id}-${order.id}`} checked={!!group.checkedOrderIds[order.id]} onChange={() => handleGroupOrderCheck(group.id, order.id)} />
-                                  <label htmlFor={`order-check-${group.id}-${order.id}`}> {generateOrderNumber(order, receptionNumber, index)} ({order.orderDate || '日付未定'}) - ¥{calculateOrderTotal(order).toLocaleString()} </label>
-                                </div>
-                              ))}
+                              {orders.map((order, orderIndex) => ( // ★ `orderIndex` をここで取得
+  <div key={order.id} className="order-checklist-item">
+    <input type="checkbox" id={`order-check-${group.id}-${order.id}`} checked={!!group.checkedOrderIds[order.id]} onChange={() => handleGroupOrderCheck(group.id, order.id)} />
+    {/* ★ `index` の代わりに `orderIndex` を渡す */}
+    <label htmlFor={`order-check-${group.id}-${order.id}`}> {generateOrderNumber(order, receptionNumber, orderIndex)} ({order.orderDate || '日付未定'}) - ¥{calculateOrderTotal(order).toLocaleString()} </label>
+  </div>
+))}
                             </div>
                             <div className="daily-payment-summary">
                               <div className="daily-payment-row total">
@@ -672,7 +671,7 @@ const OrderForm = () => {
                                   {orders.map((order, index) => (
                                   // 日付が設定されている注文のみをオプションとして表示
                                   order.orderDate && (
-                                  <option key={order.id} value={order.orderDate}>
+                                  <option key={order.id} value={order.id}>
                                    注文#{index + 1} ({order.orderDate})
                                   </option>
                                  )

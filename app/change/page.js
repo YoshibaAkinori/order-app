@@ -105,140 +105,100 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
     setGlobalNotes('');
   };
 
-  const handleSearch = async () => {
-    if (!searchId) {
-      alert('受付番号または注文番号を入力してください。');
-      return;
+const handleSearch = async () => {
+  if (!searchId) {
+    alert('受付番号または注文番号を入力してください。');
+    return;
+  }
+  setIsLoading(true);
+  setIsDataLoaded(false);
+
+  let receptionNumToSearch = searchId;
+  let searchedOrderId = null;
+
+  if (searchId.length > 5 && searchId.match(/[A-Z]/)) {
+    receptionNumToSearch = searchId.substring(2, searchId.length - 1);
+    searchedOrderId = searchId;
+  }
+  
+  try {
+    const apiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/orders/${receptionNumToSearch}`;
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || '注文データの取得に失敗しました。');
     }
-    setIsLoading(true);
-    setIsDataLoaded(false);
+    const data = await response.json();
 
-    let receptionNumToSearch = searchId;
-    let searchedOrderId = null;
+    setCustomerInfo(data.customerInfo);
+    setReceptionNumber(data.receptionNumber);
+    setAllocationNumber(data.allocationNumber);
 
-    if (searchId.length > 5 && searchId.match(/[A-Z]/)) {
-      receptionNumToSearch = searchId.substring(2, searchId.length - 1);
-      searchedOrderId = searchId;
+    // まず注文データを処理
+    const loadedOrders = data.orders.map((dbOrder) => {
+      const mergedOrderItems = Object.keys(PRODUCTS).map(productKey => {
+        const masterProduct = PRODUCTS[productKey];
+        const orderedItem = (dbOrder.orderItems || []).find(item => item.productKey === productKey);
+        return {
+          productKey: productKey, 
+          name: masterProduct.name, 
+          unitPrice: masterProduct.price,
+          quantity: orderedItem ? orderedItem.quantity : 0, 
+          notes: orderedItem ? orderedItem.notes : ''
+        };
+      });
+      return { ...dbOrder, orderItems: mergedOrderItems };
+    });
+
+    // 注文の並び替え処理
+    loadedOrders.sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+
+    if (searchedOrderId) {
+      const foundIndex = loadedOrders.findIndex(order => order.orderId === searchedOrderId);
+      if (foundIndex > -1) {
+        const [foundOrder] = loadedOrders.splice(foundIndex, 1);
+        loadedOrders.unshift(foundOrder);
+      }
     }
-    
-    try {
-      const apiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/orders/${receptionNumToSearch}`;
-      const response = await fetch(apiUrl);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '注文データの取得に失敗しました。');
-      }
-      const data = await response.json();
 
-      setCustomerInfo(data.customerInfo);
-      setReceptionNumber(data.receptionNumber);
-      setAllocationNumber(data.allocationNumber);
+    setOrders(loadedOrders);
 
-      // まず注文データを処理
-      const loadedOrders = data.orders.map((dbOrder) => {
-        const mergedOrderItems = Object.keys(PRODUCTS).map(productKey => {
-          const masterProduct = PRODUCTS[productKey];
-          const orderedItem = (dbOrder.orderItems || []).find(item => item.productKey === productKey);
-          return {
-            productKey: productKey, 
-            name: masterProduct.name, 
-            unitPrice: masterProduct.price,
-            quantity: orderedItem ? orderedItem.quantity : 0, 
-            notes: orderedItem ? orderedItem.notes : ''
-          };
-        });
-        return { ...dbOrder, orderItems: mergedOrderItems };
-      });
+    // ★★★ 支払いグループの処理を改善 ★★★
+    const processedPaymentGroups = (data.paymentGroups || []).map(group => {
+  // DBのpaymentDateは注文番号なので、そのまま使う
+  return group; 
+  // ※ もし古いデータ形式（日付）が残っている場合は、それをorderIdに変換するロジックは残してもOK
+});
+setPaymentGroups(processedPaymentGroups);
 
-      // 注文の並び替え処理
-      loadedOrders.sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+// ★★★ 領収書データの処理 ★★★
+const loadedReceipts = (data.receipts || []).map(receipt => {
+  // DBのissueDateは注文番号なので、そのまま使う
+  return receipt;
+  // ※ グループ経由でのissueDate設定ロジックも、注文番号をそのまま使うように修正
+});
+setManualReceipts(loadedReceipts);
 
-      if (searchedOrderId) {
-        const foundIndex = loadedOrders.findIndex(order => order.orderId === searchedOrderId);
-        if (foundIndex > -1) {
-          const [foundOrder] = loadedOrders.splice(foundIndex, 1);
-          loadedOrders.unshift(foundOrder);
-        }
-      }
+    setManualReceipts(loadedReceipts);
 
-      setOrders(loadedOrders);
-
-      // 支払いグループの処理 - 注文番号をorder.idに変換
-      const processedPaymentGroups = (data.paymentGroups || []).map(group => {
-        // group.paymentDateが注文番号の場合、対応するorder.idに変換
-        if (group.paymentDate && group.paymentDate.length > 5) {
-          const correspondingOrder = loadedOrders.find(order => {
-            const tempOrderIndex = loadedOrders.indexOf(order);
-            const tempOrderNumber = generateOrderNumber(order, data.receptionNumber, tempOrderIndex);
-            return tempOrderNumber === group.paymentDate;
-          });
-          
-          if (correspondingOrder) {
-            return {
-              ...group,
-              paymentDate: correspondingOrder.id.toString() // order.idに変換
-            };
-          }
-        }
-        return group;
-      });
-
-      setPaymentGroups(processedPaymentGroups);
-
-      // 領収書データの処理
-      const loadedReceipts = (data.receipts || []).map(receipt => {
-        // 支払いグループに関連する領収書の場合
-        if (receipt.groupId) {
-          const correspondingGroup = processedPaymentGroups.find(g => g.id === receipt.groupId);
-          if (correspondingGroup) {
-            // 支払いグループの支払日（order.id）から対応する注文の日付を取得
-            const correspondingOrder = loadedOrders.find(o => o.id === parseInt(correspondingGroup.paymentDate, 10));
-            return {
-              ...receipt,
-              issueDate: correspondingOrder ? correspondingOrder.orderDate : receipt.issueDate
-            };
-          }
-        } else {
-          // 通常の領収書の場合（支払いグループに関連しない）
-          if (receipt.issueDate && receipt.issueDate.length > 5) {
-            // 注文番号形式の場合、対応する注文を探す
-            const correspondingOrder = loadedOrders.find(order => {
-              const tempOrderIndex = loadedOrders.indexOf(order);
-              const tempOrderNumber = generateOrderNumber(order, data.receptionNumber, tempOrderIndex);
-              return tempOrderNumber === receipt.issueDate;
-            });
-            
-            if (correspondingOrder) {
-              return {
-                ...receipt,
-                issueDate: correspondingOrder.orderDate
-              };
-            }
-          }
-        }
-        return receipt;
-      });
-
-      setManualReceipts(loadedReceipts);
-
-      // UI状態の設定
-      if ((processedPaymentGroups && processedPaymentGroups.length > 0) || (loadedReceipts && loadedReceipts.length > 0)) {
-        setIsPaymentOptionsOpen(true);
-        if(processedPaymentGroups && processedPaymentGroups.length > 0) setIsCombinedPaymentSummaryOpen(true);
-        if(loadedReceipts && loadedReceipts.length > 0) setIsReceiptDetailsOpen(true);
-      } else {
-        setIsPaymentOptionsOpen(false);
-        setIsCombinedPaymentSummaryOpen(false);
-        setIsReceiptDetailsOpen(false);
-      }
-
-      setIsDataLoaded(true);
-    } catch (error) {
-      alert(`エラー: ${error.message}`);
-    } finally {
-      setIsLoading(false);
+    // UIの状態設定
+    if ((processedPaymentGroups && processedPaymentGroups.length > 0) || (loadedReceipts && loadedReceipts.length > 0)) {
+      setIsPaymentOptionsOpen(true);
+      if(processedPaymentGroups && processedPaymentGroups.length > 0) setIsCombinedPaymentSummaryOpen(true);
+      if(loadedReceipts && loadedReceipts.length > 0) setIsReceiptDetailsOpen(true);
+    } else {
+      setIsPaymentOptionsOpen(false);
+      setIsCombinedPaymentSummaryOpen(false);
+      setIsReceiptDetailsOpen(false);
     }
-  };
+
+    setIsDataLoaded(true);
+  } catch (error) {
+    alert(`エラー: ${error.message}`);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleUpdate = async () => {
     const updateApiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/orders/${receptionNumber}`;
@@ -323,8 +283,31 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
   };
 
   const updateOrder = useCallback((orderId, updatedFields) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updatedFields } : o));
-  }, []);
+    setOrders(prev => {
+      // 1. 更新対象の注文のインデックスを見つける
+      const orderIndex = prev.findIndex(o => o.id === orderId);
+      if (orderIndex === -1) return prev; // 見つからなければ何もしない
+
+      const originalOrder = prev[orderIndex];
+
+      // 2. もし「日付が更新」され、かつ「まだorderIdがない」場合
+      if (updatedFields.orderDate && !originalOrder.orderId) {
+        
+        // 3. 新しいorderIdを生成する
+        //    generateOrderNumberには日付が必要なので、更新後の日付を使う
+        const tempOrderForIdGeneration = { ...originalOrder, ...updatedFields };
+        const newOrderId = generateOrderNumber(tempOrderForIdGeneration, receptionNumber, orderIndex);
+        
+        // 4. 更新内容に新しいorderIdを追加する
+        if (newOrderId !== '---') {
+          updatedFields.orderId = newOrderId;
+        }
+      }
+
+      // 5. 注文情報を更新する
+      return prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o));
+    });
+  }, [receptionNumber, generateOrderNumber]); // 依存配列にreceptionNumberとgenerateOrderNumberを追加
 
   const addOrder = useCallback(() => {
     setOrders(prev => [...prev, createNewOrder()]);
@@ -397,38 +380,38 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
     setPaymentGroups(prev => prev.filter(group => group.id !== groupId));
   };
   // updatePaymentGroup関数を修正して、支払日が変更された時に対応する領収書の発行日も自動更新
-const updatePaymentGroup = (groupId, field, value) => {
-  setPaymentGroups(prev => prev.map(group => group.id === groupId ? { ...group, [field]: value } : group));
-  
-  // 支払日が変更された場合、対応する領収書の発行日も自動更新
-  if (field === 'paymentDate') {
-    // 対応する注文を検索
-    const correspondingOrder = orders.find(o => o.id === parseInt(value, 10));
-    
-    if (correspondingOrder && correspondingOrder.orderDate) {
-      // 対応する領収書を更新（手動編集されていない場合のみ）
-      setManualReceipts(prev => prev.map(receipt => {
-        if (receipt.groupId === groupId && !receipt.isIssueDateManuallyEdited) {
-          return {
-            ...receipt,
-            issueDate: correspondingOrder.orderDate
-          };
+const updatePaymentGroup = (id, field, value) => {
+  setPaymentGroups(prevGroups =>
+    prevGroups.map(group => {
+      if (group.id === id) {
+        const updatedGroup = { ...group, [field]: value };
+
+        // 支払日変更なら関連する領収書の発行日も更新
+        if (field === 'paymentDate') {
+          // ★★★ 修正箇所 ★★★
+          // valueには選択された注文のIDが直接入っているため、
+          // これをそのまま領収書の発行日(issueDate)にセットします。
+          setManualReceipts(prevReceipts =>
+            prevReceipts.map(receipt => {
+              // このグループに関連する領収書で、手動編集されていない場合のみ更新
+              if ((receipt.groupId === id || receipt.paymentGroupId === id) && 
+                  !receipt.isIssueDateManuallyEdited) {
+                return { 
+                  ...receipt, 
+                  issueDate: value, // ★ 日付ではなく、注文ID(value)を直接セット
+                  linkedPaymentDate: value 
+                };
+              }
+              return receipt;
+            })
+          );
         }
-        return receipt;
-      }));
-    } else {
-      // 支払日がクリアされた場合、発行日もクリア（手動編集されていない場合のみ）
-      setManualReceipts(prev => prev.map(receipt => {
-        if (receipt.groupId === groupId && !receipt.isIssueDateManuallyEdited) {
-          return {
-            ...receipt,
-            issueDate: ''
-          };
-        }
-        return receipt;
-      }));
-    }
-  }
+
+        return updatedGroup;
+      }
+      return group;
+    })
+  );
 };
   const handleGroupOrderCheck = (groupId, orderId) => {
     setPaymentGroups(prevGroups => prevGroups.map(group => {
@@ -462,7 +445,7 @@ useEffect(() => {
 
   // 1. 支払いグループが存在しない場合は、それに関連付けられていた領収書だけをクリアする
   if (paymentGroups.length === 0) {
-    const purelyManualReceipts = manualReceipts.filter(r => !r.groupId);
+    const purelyManualReceipts = manualReceipts.filter(r => !r.groupId && !r.paymentGroupId);
     if (manualReceipts.length !== purelyManualReceipts.length) {
         setManualReceipts(purelyManualReceipts);
     }
@@ -470,31 +453,32 @@ useEffect(() => {
   }
 
   // 2. ユーザーが完全に手動で追加した領収書（グループIDを持たない）を抽出
-  const purelyManualReceipts = manualReceipts.filter(r => !r.groupId);
+  const purelyManualReceipts = manualReceipts.filter(r => !r.groupId && !r.paymentGroupId);
 
   // 3. 現在の支払いグループを元に、領収書を自動生成
   const autoGeneratedReceipts = paymentGroupsWithTotals.map(group => {
     const docType = getDocumentType(customerInfo.paymentMethod) || '領収書';
-    const existingReceipt = manualReceipts.find(r => r.groupId === group.id);
+    const existingReceipt = manualReceipts.find(r => 
+      r.groupId === group.id || r.paymentGroupId === group.id
+    );
 
-    // group.paymentDate (ここには order.id が入っています) を使って、
-    // 対応する注文オブジェクトを検索します。
-    const correspondingOrder = orders.find(o => o.id === parseInt(group.paymentDate, 10));
+    // ★ 修正: group.paymentDateにはリンクキー(orderId等)が直接入っているため、それをそのまま使う
+    const autoIssueDate = group.paymentDate || '';
 
     // 既存の領収書がある場合は、手動編集された値を保持
     if (existingReceipt) {
       return {
         ...existingReceipt,
+        groupId: group.id, // グループIDを確実に設定
         // 金額は手動編集されていない場合のみ更新
         amount: existingReceipt.isAmountManuallyEdited 
                 ? existingReceipt.amount 
                 : group.total,
-        // 発行日は手動編集されている場合は既存値を保持、そうでなければ自動設定
+        // ★ 修正: 発行日は手動編集されている場合は既存値を保持、そうでなければ正しいキー(autoIssueDate)を自動設定
         issueDate: existingReceipt.isIssueDateManuallyEdited 
                    ? existingReceipt.issueDate
-                   : ((group.paymentDate && correspondingOrder && correspondingOrder.orderDate) 
-                      ? correspondingOrder.orderDate 
-                      : existingReceipt.issueDate || ''),
+                   : autoIssueDate,
+        linkedPaymentDate: group.paymentDate // 連動している支払日を記録
       };
     }
 
@@ -503,12 +487,13 @@ useEffect(() => {
       id: group.id,
       groupId: group.id,
       documentType: docType,
-      issueDate: (group.paymentDate && correspondingOrder && correspondingOrder.orderDate) 
-                 ? correspondingOrder.orderDate 
-                 : '',
+      // ★ 修正: 正しいキー(autoIssueDate)をセット
+      issueDate: autoIssueDate,
       recipientName: customerInfo.invoiceName,
       amount: group.total,
       isAmountManuallyEdited: false,
+      isIssueDateManuallyEdited: false,
+      linkedPaymentDate: group.paymentDate // 連動している支払日を記録
     };
   });
 
@@ -526,15 +511,14 @@ useEffect(() => {
              receipt.issueDate !== newReceipt.issueDate ||
              receipt.recipientName !== newReceipt.recipientName ||
              receipt.amount !== newReceipt.amount ||
-             receipt.groupId !== newReceipt.groupId;
+             (receipt.groupId || receipt.paymentGroupId) !== (newReceipt.groupId || newReceipt.paymentGroupId);
     });
 
   if (hasChanged) {
     setManualReceipts(newFinalReceipts);
   }
 
-}, [paymentGroupsWithTotals, customerInfo.paymentMethod, customerInfo.invoiceName, orders]); 
-// manualReceiptsを依存配列から除去して無限ループを防ぐ
+}, [paymentGroupsWithTotals, customerInfo.paymentMethod, customerInfo.invoiceName, orders]);
 
   const customerFullAddress = useMemo(() => {
     if (!customerInfo.address) return '';
@@ -582,40 +566,75 @@ useEffect(() => {
   const removeReceipt = (receiptId) => setManualReceipts(prev => prev.filter(r => r.id !== receiptId));
   
   const updateReceipt = (receiptId, field, value) => {
-  setManualReceipts(prev => prev.map(r => {
-    if (r.id === receiptId) {
-      const updatedReceipt = { ...r, [field]: value };
-      
-      // 金額が変更された場合は、手動編集フラグを立てる
-      if (field === 'amount') {
-        updatedReceipt.isAmountManuallyEdited = true;
+    setManualReceipts(prev => prev.map(r => {
+      if (r.id === receiptId) {
+        const updatedReceipt = { ...r, [field]: value };
+        
+        // 金額が変更された場合は、手動編集フラグを立てる
+        if (field === 'amount') {
+          updatedReceipt.isAmountManuallyEdited = true;
+        }
+        
+        // 発行日が変更された場合は、手動編集フラグを立てる
+        if (field === 'issueDate') {
+          updatedReceipt.isIssueDateManuallyEdited = true;
+          // 手動編集された場合は、支払いグループとの連動を解除
+          delete updatedReceipt.linkedPaymentDate;
+        }
+        
+        // 手動編集フラグの設定（新規追加）
+        if (field === 'isIssueDateManuallyEdited') {
+          updatedReceipt.isIssueDateManuallyEdited = value;
+          if (value) {
+            // 手動編集モードに切り替えた場合、連動を解除
+            delete updatedReceipt.linkedPaymentDate;
+          }
+        }
+        
+        return updatedReceipt;
       }
-      
-      // 発行日が変更された場合は、手動編集フラグを立てる（新しく追加）
-      if (field === 'issueDate') {
-        updatedReceipt.isIssueDateManuallyEdited = true;
-      }
-      
-      return updatedReceipt;
-    }
-    return r;
-  }));
-};
+      return r;
+    }));
+  };
 
-  const autoGeneratedReceipts = useMemo(() => {
-    const docType = getDocumentType(customerInfo.paymentMethod);
-    if (!isPaymentOptionsOpen) {
-        if (!customerInfo.paymentMethod || !customerInfo.invoiceName) return [];
-        return orders.map(order => ({
-            id: order.id,
-            documentType: docType || '(種別未定)',
-            issueDate: order.orderDate,
-            recipientName: customerInfo.invoiceName,
-            amount: calculateOrderTotal(order)
-        }));
+  const autoGeneratedReceipts = paymentGroupsWithTotals.map(group => {
+    const docType = getDocumentType(customerInfo.paymentMethod) || '領収書';
+    const existingReceipt = manualReceipts.find(r => 
+      r.groupId === group.id || r.paymentGroupId === group.id
+    );
+
+    // ★★★ 修正 ★★★
+    // group.paymentDateにはリンクキー(orderId等)が直接入っているため、それをそのまま使う
+    const autoIssueDate = group.paymentDate || '';
+
+    if (existingReceipt) {
+      return {
+        ...existingReceipt,
+        groupId: group.id,
+        amount: existingReceipt.isAmountManuallyEdited 
+                ? existingReceipt.amount 
+                : group.total,
+        // ★ 正しいキーをセットするよう修正
+        issueDate: existingReceipt.isIssueDateManuallyEdited 
+                   ? existingReceipt.issueDate
+                   : autoIssueDate,
+        linkedPaymentDate: group.paymentDate
+      };
     }
-    return [];
-  }, [orders, customerInfo.paymentMethod, customerInfo.invoiceName, isPaymentOptionsOpen, calculateOrderTotal, getDocumentType]);
+
+    // 新規の場合も同様に修正
+    return {
+      id: group.id,
+      groupId: group.id,
+      documentType: docType,
+      issueDate: autoIssueDate,
+      recipientName: customerInfo.invoiceName,
+      amount: group.total,
+      isAmountManuallyEdited: false,
+      isIssueDateManuallyEdited: false,
+      linkedPaymentDate: group.paymentDate
+    };
+  });
 
   const finalReceipts = manualReceipts.length > 0 ? manualReceipts : autoGeneratedReceipts;
 
@@ -695,7 +714,7 @@ useEffect(() => {
                                 onChange={(e) => updatePaymentGroup(group.id, 'paymentDate', e.target.value)} className="combined-payment-select">
                                 <option value="">支払日を選択</option>
                                   {orders.map((order, index) => (
-                                    <option key={order.id} value={order.id}>
+                                    <option key={order.id} value={order.orderId || order.id}>
                                     注文#{index + 1} ({order.orderDate || '日付未定'})
                                 </option>
                               ))}
@@ -764,7 +783,7 @@ useEffect(() => {
                 <option value="">注文を選択</option>
                 {orders.map((order, index) => (
                   order.orderDate && (
-                    <option key={order.id} value={order.orderDate}>
+                    <option key={order.id} value={order.orderId || order.id}>
                       注文#{index + 1} ({order.orderDate})
                     </option>
                   )

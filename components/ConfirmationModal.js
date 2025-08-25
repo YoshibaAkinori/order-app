@@ -112,57 +112,47 @@ const ConfirmationModal = ({
               ))}
 
                 <section className="conf-section conf-payment-details">
-                  {(paymentGroups || []).map((group, index) => (
+                  {(paymentGroups || []).map((group, index) => {
+                    // 支払日として指定された注文ID（group.paymentDate）を元に、注文情報を検索
+                    const paymentOrder = orders.find(o => o.id === parseInt(group.paymentDate, 10));
+                    
+                    // 見つかった注文の配列内でのインデックスを取得
+                    const paymentOrderIndex = paymentOrder ? orders.findIndex(o => o.id === paymentOrder.id) : -1;
+
+                    // 表示用の注文番号を生成
+                    const displayOrderNumber = (paymentOrder && paymentOrderIndex !== -1)
+                      ? generateOrderNumber(paymentOrder, receptionNumber, paymentOrderIndex)
+                      : '（注文未定）';
+
+                    // 対象となる注文のリストを生成
+                    const targetOrderNumbers = Object.keys(group.checkedOrderIds)
+                      .map(orderId => {
+                        const order = orders.find(o => o.id == orderId);
+                        if (!order) return null;
+                        const orderIndex = orders.findIndex(o => o.id === order.id);
+                        // DBに保存済みの注文番号があればそれを使い、なければ新規生成する
+                        return order.orderId || generateOrderNumber(order, receptionNumber, orderIndex);
+                      })
+                      .filter(Boolean)
+                      .join(', ');
+
+                    return (
                       <div key={group.id} className="conf-payment-group">
                         <div className="conf-grid-item">
-                          <div className="conf-grid-item">
-                            {(() => {
-                              // 修正: group.paymentDateがorder.idの場合の処理
-                              let paymentOrder, paymentOrderIndex, displayOrderNumber;
-                              
-                              if (group.paymentDate && !isNaN(parseInt(group.paymentDate))) {
-                                // paymentDateがorder.idの場合
-                                paymentOrder = orders.find(o => o.id === parseInt(group.paymentDate, 10));
-                                paymentOrderIndex = paymentOrder ? orders.findIndex(o => o.id === paymentOrder.id) : -1;
-                              } else {
-                                // paymentDateが日付文字列の場合
-                                paymentOrder = orders.find(o => o.orderDate === group.paymentDate);
-                                paymentOrderIndex = paymentOrder ? orders.findIndex(o => o.orderDate === group.paymentDate) : -1;
-                              }
-
-                              // 対応する注文が見つかれば注文番号を生成、なければ「未定」
-                              displayOrderNumber = (paymentOrder && paymentOrderIndex !== -1)
-                                ? generateOrderNumber(paymentOrder, receptionNumber, paymentOrderIndex)
-                                : '（注文未定）';
-
-                              return (
-                                <div className="conf-label">支払グループ #{index + 1} (お支払いする注文番号: {displayOrderNumber})</div>
-                              );
-                            })()}
-                            <div className="conf-value-order">
-                              対象注文: {
-                              Object.keys(group.checkedOrderIds)
-                                .map(orderId => {
-                                  const order = orders.find(o => o.id == orderId);
-
-                                  if (!order) return null;
-
-                                  const orderIndex = orders.findIndex(o => o.id === order.id);
-
-                                  return order.orderId || generateOrderNumber(order, receptionNumber, orderIndex);
-                                })
-                                .filter(Boolean)
-                                .join(', ')
-                              }
-        </div>
-                            </div>
+                          <div className="conf-label">
+                            支払グループ #{index + 1} (お支払いする注文番号: {displayOrderNumber})
+                          </div>
+                          <div className="conf-value-order">
+                            対象注文: {targetOrderNumbers}
+                          </div>
                         </div>
                         <div className="conf-grand-total">
                             <strong>合計金額</strong>
                             <span>¥ {(group.total || 0).toLocaleString()}</span>
                         </div>
                       </div>
-                    ))}
+                    );
+                  })}
                 </section>
 
               
