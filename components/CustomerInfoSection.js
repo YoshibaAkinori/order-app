@@ -76,7 +76,7 @@ const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, on
               <input
                 type="text"
                 name="address"
-                value={formData.address}
+                //value={formData.address}
                 onChange={handleInputChange}
                 className="customer-info-input"
                 placeholder="住所を入力してください"
