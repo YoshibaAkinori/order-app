@@ -261,86 +261,82 @@ const handleCancelAll = async () => {
     }
   };
 
-  // page.js
 
-// page.js
-
-const handleDeleteOrCancelOrder = async (orderToHandle) => {
-  // 最後の1件は削除させない
-  if (orders.length <= 1) {
-    return alert('最後の1件は削除できません。受付全体をキャンセルしてください。');
+const handleDeleteOrCancelOrder = (orderToHandle) => {
+  // 1. 現在キャンセルされていない有効な注文の数を数える
+  const activeOrders = orders.filter(o => o.orderStatus !== 'CANCELED');
+  
+  // 2. もし有効な注文が残り1件で、かつその最後の1件をキャンセルしようとしている場合は処理を中断
+  if (activeOrders.length <= 1 && orderToHandle.orderStatus !== 'CANCELED') {
+    alert('有効な注文が最後の1件になるため、キャンセル予定にできません。\n受付全体をキャンセルする場合は、ページ下部の「この受付を全てキャンセル」ボタンを使用してください。');
+    return; // ここで関数を終了
   }
 
-  const isNewOrder = !initialOrderIds.has(orderToHandle.orderId);
-  
-  // --- 1. 支払いグループに含まれているかチェック & 警告 ---
+  // どの注文かを判定するためのキーを定義
   const orderTempId = orderToHandle.id.toString();
   const orderLinkingKey = orderToHandle.orderId || orderTempId;
-  const isOrderInPaymentGroup = paymentGroups.some(
-    group => group.checkedOrderIds[orderTempId] || group.paymentDate === orderLinkingKey
-  );
+  
+  // ★ 1. DBに保存済みの「既存注文」か、画面で追加しただけの「新規注文」かを判定
+  const isPersistedOrder = initialOrderIds.has(orderToHandle.orderId);
 
-  if (isOrderInPaymentGroup) {
-    alert("このご注文は支払いグループが設定されているため、支払いグループと関連する領収書を初期化します。");
-  }
-
-  // --- 2. 既存注文の場合は、APIを呼び出して削除 & 更新 ---
-  if (!isNewOrder) {
-    setIsLoading(true);
-    try {
-      // 2-1. まず、個別の注文(OrderDetail)をDBから削除
-      await cancelSingleOrderAPI(receptionNumber, orderToHandle.orderId);
-
-      // 2-2. 次に、画面の状態(state)を元に、クリーンアップされたデータを作成
-      const nextOrders = orders.filter(o => o.id !== orderToHandle.id);
-      
-      let nextPaymentGroups = paymentGroups;
-      let nextReceipts = manualReceipts;
-
-      if (isOrderInPaymentGroup) {
-        nextPaymentGroups = [];
-        nextReceipts = manualReceipts.filter(r => !r.groupId);
-      }
-
-      // 2-3. クリーンアップされたデータで、受付全体(Ordersヘッダー)を更新
-      const updatedData = {
-        selectedYear,
-        customer: customerInfo,
-        orders: nextOrders, // 削除後の注文リスト
-        receptionNumber,
-        allocationNumber,
-        paymentGroups: nextPaymentGroups, // 初期化後の支払いグループ
-        receipts: nextReceipts,           // 初期化後の領収書
-        orderType: '変更',
-        globalNotes,
-      };
-      
-      await updateOrderAPI(receptionNumber, updatedData);
-      
-      // 2-4. 全て成功したら、最後に画面のstateを更新
-      setOrders(nextOrders);
-      if (isOrderInPaymentGroup) {
-        setPaymentGroups(nextPaymentGroups);
-        setManualReceipts(nextReceipts);
-        setIsCombinedPaymentSummaryOpen(false);
-      }
-
-      alert(`注文番号「${orderToHandle.orderId}」を削除し、関連データを更新しました。`);
-
-    } catch (error) {
-      console.error('個別注文のキャンセル処理中にエラー:', error);
-      alert(`エラー: ${error.message}\nページの再読み込みをお勧めします。`);
-    } finally {
-      setIsLoading(false);
+  // =============================================================
+  // ★ ケースA: 新規注文の場合 → 即座にリストから削除
+  // =============================================================
+  if (!isPersistedOrder) {
+    if (orders.length <= 1) {
+      return alert('最後の1件は削除できません。');
     }
-  } else {
-    // --- 3. 新規注文の場合は、ローカルのstateを更新するだけ ---
-    setOrders(prev => prev.filter(o => o.id !== orderToHandle.id));
+
+    // 関連する支払いグループがあれば、警告して初期化
+    const isOrderInPaymentGroup = paymentGroups.some(
+      group => group.checkedOrderIds[orderTempId] || group.paymentDate === orderLinkingKey
+    );
     if (isOrderInPaymentGroup) {
+      alert("このご注文は支払いグループに設定されているため、支払いグループと関連する領収書を初期化します。");
       setPaymentGroups([]);
       setManualReceipts(prev => prev.filter(r => !r.groupId));
       setIsCombinedPaymentSummaryOpen(false);
     }
+    
+    // 注文リストから物理的に削除
+    setOrders(prev => prev.filter(o => o.id !== orderToHandle.id));
+    return;
+  }
+
+  // =============================================================
+  // ケースB: 既存注文の場合 → 「キャンセル予定」としてマーク
+  // =============================================================
+  
+  // ステータスを切り替える（キャンセル ⇔ 有効）
+  const nextStatus = orderToHandle.orderStatus === 'CANCELED' ? undefined : 'CANCELED';
+  setOrders(prev => 
+    prev.map(o => 
+      o.id === orderToHandle.id ? { ...o, orderStatus: nextStatus } : o
+    )
+  );
+
+  // 「キャンセル予定」にする場合のみ、クリーンアップ処理を実行
+  if (nextStatus === 'CANCELED') {
+    let nextManualReceipts = manualReceipts;
+
+    // --- 支払いグループのクリーンアップ ---
+    const isOrderInPaymentGroup = paymentGroups.some(
+      group => group.checkedOrderIds[orderTempId] || group.paymentDate === orderLinkingKey
+    );
+    if (isOrderInPaymentGroup) {
+      alert("キャンセル予定の注文が支払いグループに含まれていたため、支払いグループと関連領収書を初期化します。\n変更を確定するには、最後に「更新」ボタンを押してください。");
+      setPaymentGroups([]);
+      // グループに紐づいていた自動生成の領収書を削除
+      nextManualReceipts = nextManualReceipts.filter(r => !r.groupId);
+    }
+
+    // ★★★ 修正箇所 ★★★
+    // --- 支払いグループとは無関係の領収書のクリーンアップ ---
+    // キャンセルされた注文を発行日としていた領収書を「リストから削除」する
+    const finalReceipts = nextManualReceipts.filter(r => r.issueDate !== orderLinkingKey);
+
+    // 最終的な領収書リストをstateにセット
+    setManualReceipts(finalReceipts);
   }
 };
 

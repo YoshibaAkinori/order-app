@@ -42,7 +42,3 @@ export const cancelAllOrdersAPI = (receptionNum, data) => request(`orders/${rece
     method: 'POST',
     body: data,
 });
-
-export const cancelSingleOrderAPI = (receptionNum, orderId) => request(`orders/${receptionNum}/${orderId}/cancel`, {
-    method: 'POST',
-});

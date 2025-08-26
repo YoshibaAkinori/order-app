@@ -111,7 +111,7 @@ const SingleOrderSection = ({
             onClick={deleteOrder} 
             className="single-order-delete-btn" 
             title="この注文を削除またはキャンセル"
-            disabled={isCanceled}
+            //disabled={isCanceled}
           >
             <X size={24} />
           </button>
@@ -119,7 +119,7 @@ const SingleOrderSection = ({
       </div>
       
       {/* 4. キャンセル済みの場合にバッジを表示 */}
-      {isCanceled && <div className="canceled-badge">キャンセル済み</div>}
+      {isCanceled && <div className="canceled-badge">キャンセル予定</div>}
 
       {/* 5. fieldsetで全体を囲み、キャンセル済みなら全てのフォーム操作を無効化 */}
       <fieldset disabled={isCanceled} className="single-order-fieldset">
