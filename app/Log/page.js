@@ -75,7 +75,7 @@ const ChangeLogPage = () => {
             </div>
           )}
           
-          <div className="logs-container">
+          <div className="log-message">
             {!isLoading && !error && Array.isArray(logs) && logs.length > 0 && 
               logs.map(log => (
                 <LogEntry key={log.logId} log={log} />

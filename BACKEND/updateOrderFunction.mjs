@@ -1,5 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, DeleteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { v4 as uuidv4 } from 'uuid'; // ★★★ uuidライブラリをインポート ★★★
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -40,7 +41,6 @@ export const handler = async (event) => {
     const path = event.requestContext?.http?.path || event.path;
     if (!path) { throw new Error("リクエストパスを特定できませんでした。"); }
 
-    // --- ルート判別ロジック ---
     const allCancelMatch = path.match(/^\/orders\/([^\/]+)\/cancel$/);
     if (httpMethod === 'POST' && allCancelMatch) {
       const [, receptionNumber] = allCancelMatch;
@@ -66,50 +66,31 @@ export const handler = async (event) => {
 // 受付全体のキャンセル処理
 // =============================================================
 const handleCancelAll = async (receptionNumber) => {
-  // ★ 1. 削除する前に、ログに残すための注文データを全て取得
   const { Items: allDetails } = await docClient.send(new QueryCommand({
-    TableName: "OrderDetails",
-    KeyConditionExpression: "receptionNumber = :rn",
-    ExpressionAttributeValues: { ":rn": receptionNumber },
+    TableName: "OrderDetails", KeyConditionExpression: "receptionNumber = :rn", ExpressionAttributeValues: { ":rn": receptionNumber },
   }));
-  const { Item: orderHeader } = await docClient.send(new GetCommand({
-    TableName: "Orders",
-    Key: { receptionNumber },
-  }));
+  const { Item: orderHeader } = await docClient.send(new GetCommand({ TableName: "Orders", Key: { receptionNumber } }));
 
-  // 2. 関連するすべてのOrderDetailを削除
   if (allDetails && allDetails.length > 0) {
-    const deletePromises = allDetails.map(item =>
-      docClient.send(new DeleteCommand({
-        TableName: "OrderDetails",
-        Key: { receptionNumber: item.receptionNumber, orderId: item.orderId }
-      }))
-    );
+    const deletePromises = allDetails.map(item => docClient.send(new DeleteCommand({ TableName: "OrderDetails", Key: { receptionNumber: item.receptionNumber, orderId: item.orderId } })));
     await Promise.all(deletePromises);
   }
 
-  // 3. Ordersヘッダーをキャンセル済みに更新
   await docClient.send(new UpdateCommand({
-    TableName: "Orders", Key: { receptionNumber },
-    UpdateExpression: "SET orderStatus = :status, updatedAt = :ts",
-    ExpressionAttributeValues: { ":status": "CANCELED", ":ts": new Date().toISOString() }
+    TableName: "Orders", Key: { receptionNumber }, UpdateExpression: "SET orderStatus = :status, updatedAt = :ts", ExpressionAttributeValues: { ":status": "CANCELED", ":ts": new Date().toISOString() }
   }));
   
-  // ★ 4. ログを作成して保存
   const logItem = {
     logId: `${receptionNumber}-CANCEL-ALL-${new Date().toISOString()}`,
     timestamp: new Date().toISOString(),
     receptionNumber: receptionNumber,
     action: "CANCEL_ALL",
-    // キャンセルされた全ての注文情報を記録
     canceledOrders: (allDetails || []).map(detail => ({
+      internalId: detail.internalId, // ★★★ 追加: ログにもIDを含める ★★★
       注文番号: detail.orderId,
       部署名: orderHeader?.customerInfo?.department || 'N/A',
       お届け日時: `${detail.deliveryDate || ''} ${detail.deliveryTime || ''}`.trim(),
-      注文内容: (detail.orderItems || [])
-        .filter(item => (item.quantity || 0) > 0)
-        .map(item => `${item.name}(${item.quantity})`)
-        .join(', ')
+      注文内容: (detail.orderItems || []).filter(item => (item.quantity || 0) > 0).map(item => `${item.name}(${item.quantity})`).join(', ')
     }))
   };
   await docClient.send(new PutCommand({ TableName: "OrderChangeLogs", Item: logItem }));
@@ -118,7 +99,7 @@ const handleCancelAll = async (receptionNumber) => {
 };
 
 // =============================================================
-// ★ 通常の注文更新処理
+// 通常の注文更新処理
 // =============================================================
 const handleUpdateOrder = async (data) => {
   const finalData = sanitizeData(data);
@@ -126,6 +107,17 @@ const handleUpdateOrder = async (data) => {
     selectedYear, customer, orders, receptionNumber, allocationNumber, 
     paymentGroups, receipts, orderType, globalNotes
   } = finalData;
+  
+  // ★★★ ここから修正 ★★★
+  // フロントエンドから送られてきた各注文をチェック
+  orders.forEach(order => {
+    // もし internalId がなければ、それはこの更新で新規追加された注文
+    if (!order.internalId) {
+      // 新しいIDを生成して付与
+      order.internalId = uuidv4();
+    }
+  });
+  // ★★★ 修正ここまで ★★★
 
   const { Item: oldOrderHeader } = await docClient.send(new GetCommand({ TableName: "Orders", Key: { receptionNumber: receptionNumber }}));
   const { Items: oldOrderDetails } = await docClient.send(new QueryCommand({ TableName: "OrderDetails", KeyConditionExpression: "receptionNumber = :rn", ExpressionAttributeValues: { ":rn": receptionNumber }}));
@@ -169,10 +161,19 @@ const handleUpdateOrder = async (data) => {
 
   await Promise.all(activeOrdersOnly.map(async (order, index) => {
     const orderDetailItem = {
-      receptionNumber, orderId: order.orderId, sequence: order.sequence || index + 1,
-      deliveryDate: order.orderDate, deliveryTime: order.orderTime, deliveryAddress: order.deliveryAddress,
-      deliveryMethod: order.deliveryMethod, isSameAddress: order.isSameAddress, orderItems: order.orderItems,
-      sideOrders: order.sideOrders, netaChanges: order.netaChanges, orderStatus: 'ACTIVE',
+      receptionNumber,
+      orderId: order.orderId,
+      internalId: order.internalId, // ★★★ 追加: internalIdを必ず含める ★★★
+      sequence: order.sequence || index + 1,
+      deliveryDate: order.orderDate,
+      deliveryTime: order.orderTime,
+      deliveryAddress: order.deliveryAddress,
+      deliveryMethod: order.deliveryMethod,
+      isSameAddress: order.isSameAddress,
+      orderItems: order.orderItems,
+      sideOrders: order.sideOrders,
+      netaChanges: order.netaChanges,
+      orderStatus: 'ACTIVE',
       orderTotal: calculateOrderTotal(order, sideMenusMaster),
     };
     await docClient.send(new PutCommand({ TableName: "OrderDetails", Item: orderDetailItem }));
@@ -180,7 +181,7 @@ const handleUpdateOrder = async (data) => {
 
   return {
     statusCode: 200,
-    headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type" },
+    headers: { "Access-control-allow-origin": "*", "access-control-allow-headers": "Content-Type" },
     body: JSON.stringify({ message: "注文が正常に更新されました" }),
   };
 };

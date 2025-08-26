@@ -1,16 +1,11 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { v4 as uuidv4 } from 'uuid'; // ★★★ uuidライブラリをインポート ★★★
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
-/**
- * オブジェクトや配列を再帰的に探索し、
- * "", undefined, null の値を一貫して null に変換する関数。
- * キーは削除しない。
- * @param {*} data - サニタイズ対象のデータ
- * @returns - サニタイズ後のデータ
- */
+// ... sanitizeData, calculateOrderTotal, calculateGrandTotal 関数は変更なし ...
 const sanitizeData = (data) => {
   if (data === "" || data === undefined || data === null) {
     return null;
@@ -33,7 +28,6 @@ const sanitizeData = (data) => {
 const calculateOrderTotal = (order, sideMenusMaster) => {
   const mainTotal = (order.orderItems || []).reduce((total, item) => total + ((parseFloat(item.unitPrice) || 0) * (parseInt(item.quantity) || 0)), 0);
   const sideTotal = (order.sideOrders || []).reduce((total, item) => {
-    // DBから読み込んだマスターデータを参照
     const price = sideMenusMaster[item.productKey]?.price || 0;
     return total + (price * (parseInt(item.quantity) || 0));
   }, 0);
@@ -44,10 +38,11 @@ const calculateGrandTotal = (orders, sideMenusMaster) => {
   return orders.reduce((total, order) => total + calculateOrderTotal(order, sideMenusMaster), 0);
 };
 
+
 export const handler = async (event) => {
   try {
     const originalData = JSON.parse(event.body);
-    const finalData = sanitizeData(originalData); // ★ データ正規化 ★
+    const finalData = sanitizeData(originalData);
 
     const { 
       selectedYear,
@@ -58,6 +53,13 @@ export const handler = async (event) => {
     if (!selectedYear) {
       throw new Error("The selected year is missing from the request.");
     }
+    
+    // ★★★ ここから修正: 各注文に不変の internalId を付与 ★★★
+    orders.forEach(order => {
+      // 新規作成なので、常に新しいIDを生成して付与する
+      order.internalId = uuidv4();
+    });
+    // ★★★ 修正ここまで ★★★
 
     const { Item: currentConfig } = await docClient.send(new GetCommand({
       TableName: "Configurations",
@@ -69,7 +71,6 @@ export const handler = async (event) => {
     }
     const sideMenusMaster = currentConfig.specialMenus;
 
-    // paymentGroupsの一時IDを、最終注文番号に置き換える
     const orderIdMap = {};
     orders.forEach(order => {
       orderIdMap[order.id] = order.orderId;
@@ -83,7 +84,6 @@ export const handler = async (event) => {
       return { ...group, checkedOrderIds: newCheckedOrderIds };
     });
 
-    // --- Ordersテーブル (親) への書き込み ---
     const grandTotal = calculateGrandTotal(orders, sideMenusMaster); 
     const orderHeaderItem = {
       receptionNumber: receptionNumber,
@@ -99,11 +99,11 @@ export const handler = async (event) => {
     };
     await docClient.send(new PutCommand({ TableName: "Orders", Item: orderHeaderItem }));
 
-    // --- OrderDetailsテーブル (子) への書き込み ---
     await Promise.all(orders.map(async (order, index) => {
       const orderDetailItem = {
         receptionNumber: receptionNumber,
         orderId: order.orderId,
+        internalId: order.internalId, // ★★★ 追加: 生成したIDをDBに保存 ★★★
         sequence: index + 1,
         deliveryDate: order.orderDate,
         deliveryTime: order.orderTime,

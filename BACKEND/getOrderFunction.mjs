@@ -33,20 +33,20 @@ export const handler = async (event) => {
     const responseData = {
       receptionNumber: orderHeader.receptionNumber,
       allocationNumber: orderHeader.allocationNumber,
-      // ★★★ ここを 'customer' から 'customerInfo' に修正 ★★★
       customerInfo: orderHeader.customerInfo, 
       paymentGroups: orderHeader.paymentGroups || [],
       receipts: orderHeader.receipts || [],
       orderType: orderHeader.orderType || '不明',
       orders: orderDetails.map(detail => ({
+        internalId: detail.internalId, // ★★★ ここでinternalIdをレスポンスに含める ★★★
         id: detail.orderId,
-        orderId: detail.orderId, // ★ orderIdも追加しておくと安全
+        orderId: detail.orderId, 
         sequence: detail.sequence,
         orderDate: detail.deliveryDate,
         orderTime: detail.deliveryTime,
         deliveryAddress: detail.deliveryAddress,
         deliveryMethod: detail.deliveryMethod,
-        isSameAddress: detail.isSameAddress, // ★ isSameAddressも返す
+        isSameAddress: detail.isSameAddress,
         orderItems: detail.orderItems || [],
         sideOrders: detail.sideOrders || [],
         netaChanges: detail.netaChanges || {},
