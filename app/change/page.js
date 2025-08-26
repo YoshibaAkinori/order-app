@@ -291,14 +291,10 @@ setManualReceipts(loadedReceipts);
       const originalOrder = prev[orderIndex];
 
       // 2. もし「日付が更新」され、かつ「まだorderIdがない」場合
-      if (updatedFields.orderDate && !originalOrder.orderId) {
-        
-        // 3. 新しいorderIdを生成する
-        //    generateOrderNumberには日付が必要なので、更新後の日付を使う
+      if (updatedFields.orderDate && updatedFields.orderDate !== originalOrder.orderDate) {
         const tempOrderForIdGeneration = { ...originalOrder, ...updatedFields };
         const newOrderId = generateOrderNumber(tempOrderForIdGeneration, receptionNumber, orderIndex);
         
-        // 4. 更新内容に新しいorderIdを追加する
         if (newOrderId !== '---') {
           updatedFields.orderId = newOrderId;
         }
