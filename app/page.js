@@ -572,7 +572,7 @@ const OrderForm = () => {
                   order={order}
                   orderIndex={index}
                   updateOrder={updateOrder}
-                  deleteOrder={deleteOrder}
+                  deleteOrder={() => deleteOrder(order.id)}
                   PRODUCTS={PRODUCTS}
                   SIDE_ORDERS_DB={SIDE_ORDERS_DB}
                   isDeletable={orders.length > 1}

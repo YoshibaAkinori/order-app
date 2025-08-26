@@ -6,6 +6,12 @@ import CustomerInfoSection from '../../components/CustomerInfoSection';
 import SingleOrderSection from '../../components/SingleOrderSection';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import { generateEmailHtml } from '../../utils/emailGenerator';
+import { 
+  searchOrderAPI, 
+  updateOrderAPI, 
+  cancelAllOrdersAPI, 
+  cancelSingleOrderAPI 
+} from '../lib/changeApi';
 
 const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
 
@@ -51,12 +57,11 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
   const [isCombinedPaymentSummaryOpen, setIsCombinedPaymentSummaryOpen] = useState(false);
   const [allocationNumber, setAllocationNumber] = useState('');
   const [receptionNumber, setReceptionNumber] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [paymentGroups, setPaymentGroups] = useState([]);
   const [isReceiptDetailsOpen, setIsReceiptDetailsOpen] = useState(false);
   const [manualReceipts, setManualReceipts] = useState([]);
-  
+  const [initialOrderIds, setInitialOrderIds] = useState(new Set());
 
   useEffect(() => {
     if (!selectedYear) {
@@ -122,13 +127,7 @@ const handleSearch = async () => {
   }
   
   try {
-    const apiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/orders/${receptionNumToSearch}`;
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || '注文データの取得に失敗しました。');
-    }
-    const data = await response.json();
+    const data = await searchOrderAPI(receptionNumToSearch);
 
     setCustomerInfo(data.customerInfo);
     setReceptionNumber(data.receptionNumber);
@@ -162,13 +161,14 @@ const handleSearch = async () => {
     }
 
     setOrders(loadedOrders);
-
+    setInitialOrderIds(new Set(loadedOrders.map(o => o.orderId).filter(Boolean)));
     // ★★★ 支払いグループの処理を改善 ★★★
     const processedPaymentGroups = (data.paymentGroups || []).map(group => {
   // DBのpaymentDateは注文番号なので、そのまま使う
   return group; 
   // ※ もし古いデータ形式（日付）が残っている場合は、それをorderIdに変換するロジックは残してもOK
 });
+
 setPaymentGroups(processedPaymentGroups);
 
 // ★★★ 領収書データの処理 ★★★
@@ -200,118 +200,225 @@ setManualReceipts(loadedReceipts);
   }
 };
 
-  const handleUpdate = async () => {
-    const updateApiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/orders/${receptionNumber}`;
+const handleUpdate = async () => {
+  // 1. キャンセルされていない有効な注文のみを抽出
+  const activeOrders = orders.filter(order => order.orderStatus !== 'CANCELED');
 
-    const ordersWithFinalId = orders.map((order, index) => ({
-      ...order,
-      // 既存のorderIdがあればそれを使い、なければ新規生成する
-      orderId: order.orderId || generateOrderNumber(order, receptionNumber, index)
-    }));
-    const transformedReceipts = finalReceipts.map(receipt => {
-      // 発行日に基づいて対応する注文とインデックスを探す
-      const correspondingOrder = orders.find(o => o.orderDate === receipt.issueDate);
-      const correspondingOrderIndex = orders.findIndex(o => o.orderDate === receipt.issueDate);
+  // 2. 有効な注文に最終的な注文番号を付与
+  const ordersWithFinalId = activeOrders.map((order, index) => ({
+    ...order,
+    // 既存のorderIdがあればそれを使い、なければ新規生成する
+    orderId: order.orderId || generateOrderNumber(order, receptionNumber, index)
+  }));
 
-      // 対応する注文が見つかった場合
-      if (correspondingOrder && correspondingOrderIndex !== -1) {
-        const finalOrderNumber = generateOrderNumber(correspondingOrder, receptionNumber, correspondingOrderIndex);
-        
-        // 有効な注文番号が生成されたら、issueDateを置き換える
-        if (finalOrderNumber !== '---') {
-          return { ...receipt, issueDate: finalOrderNumber };
-        }
-      }
-      // 置き換えられない場合は、元のreceipt（日付のまま）を返す
-      return receipt;
-    });
-    // paymentGroupsのpaymentDateも、対応する注文番号に書き換える
-    const transformedPaymentGroups = paymentGroupsWithTotals.map(group => {
-      // group.paymentDateにはorder.idが入っているため、IDで注文を検索します。
-      const correspondingOrder = orders.find(o => o.id === parseInt(group.paymentDate, 10));
-      const correspondingOrderIndex = orders.findIndex(o => o.id === parseInt(group.paymentDate, 10));
+  // ★ 修正: stateのデータが既に正しい形式なので、複雑な変換は不要
+  // paymentGroups と receipts は、現在のstateをそのまま使用
+  const transformedPaymentGroups = paymentGroupsWithTotals;
+  const transformedReceipts = finalReceipts;
 
-      if (correspondingOrder && correspondingOrderIndex !== -1) {
-        const finalOrderNumber = generateOrderNumber(correspondingOrder, receptionNumber, correspondingOrderIndex);
-        if (finalOrderNumber !== '---') {
-          // paymentDateを注文番号で置き換えた新しいグループオブジェクトを返す
-          return { ...group, paymentDate: finalOrderNumber };
-        }
-      }
-      // 置き換えられない場合は、元のグループをそのまま返す
-      return group;
-    });
+  // 3. バックエンドに送信するデータを作成
+  const updatedData = {
+    selectedYear: selectedYear,
+    customer: customerInfo,
+    orders: ordersWithFinalId,
+    receptionNumber,
+    allocationNumber,
+    paymentGroups: transformedPaymentGroups,
+    receipts: transformedReceipts,
+    orderType: '変更',
+    globalNotes: globalNotes,
+  };
 
-    const updatedData = {
-      selectedYear: selectedYear,
-      customer: customerInfo, 
-      orders: ordersWithFinalId,
-      receptionNumber, 
-      allocationNumber, 
-      paymentGroups: transformedPaymentGroups, 
-      receipts: transformedReceipts,
-      orderType: '変更',
-      globalNotes: globalNotes,
-    };
-    
+  try {
+    // ★ 修正: APIモジュールを呼び出す
+    await updateOrderAPI(receptionNumber, updatedData);
+
+    setIsConfirmationOpen(false);
+    alert('注文内容を正常に更新しました。');
+    if (isModalMode && typeof onClose === 'function') {
+      onClose();
+    } else {
+      resetForm();
+    }
+  } catch (error) {
+    console.error('注文の更新中にエラーが発生しました:', error);
+    alert(`エラー: ${error.message}`);
+  }
+};
+
+const handleCancelAll = async () => {
+    if (!window.confirm(`受付番号「${receptionNumber}」の注文を本当にすべてキャンセルしますか？`)) return;
+    setIsLoading(true);
     try {
-      const response = await fetch(updateApiUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedData),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '注文の更新に失敗しました。');
-      }
-      setIsConfirmationOpen(false);
-      alert('注文内容を正常に更新しました。');
-      if (isModalMode && typeof onClose === 'function') {
-        onClose();
-      } else {
-        resetForm();
-      }
+      await cancelAllOrdersAPI(receptionNumber, { selectedYear });
+      alert('注文をキャンセルしました。');
+      resetForm();
     } catch (error) {
-      console.error('注文の更新中にエラーが発生しました:', error);
+      console.error('キャンセル処理中にエラー:', error);
       alert(`エラー: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  // page.js
+
+// page.js
+
+const handleDeleteOrCancelOrder = async (orderToHandle) => {
+  // 最後の1件は削除させない
+  if (orders.length <= 1) {
+    return alert('最後の1件は削除できません。受付全体をキャンセルしてください。');
+  }
+
+  const isNewOrder = !initialOrderIds.has(orderToHandle.orderId);
+  
+  // --- 1. 支払いグループに含まれているかチェック & 警告 ---
+  const orderTempId = orderToHandle.id.toString();
+  const orderLinkingKey = orderToHandle.orderId || orderTempId;
+  const isOrderInPaymentGroup = paymentGroups.some(
+    group => group.checkedOrderIds[orderTempId] || group.paymentDate === orderLinkingKey
+  );
+
+  if (isOrderInPaymentGroup) {
+    alert("このご注文は支払いグループが設定されているため、支払いグループと関連する領収書を初期化します。");
+  }
+
+  // --- 2. 既存注文の場合は、APIを呼び出して削除 & 更新 ---
+  if (!isNewOrder) {
+    setIsLoading(true);
+    try {
+      // 2-1. まず、個別の注文(OrderDetail)をDBから削除
+      await cancelSingleOrderAPI(receptionNumber, orderToHandle.orderId);
+
+      // 2-2. 次に、画面の状態(state)を元に、クリーンアップされたデータを作成
+      const nextOrders = orders.filter(o => o.id !== orderToHandle.id);
+      
+      let nextPaymentGroups = paymentGroups;
+      let nextReceipts = manualReceipts;
+
+      if (isOrderInPaymentGroup) {
+        nextPaymentGroups = [];
+        nextReceipts = manualReceipts.filter(r => !r.groupId);
+      }
+
+      // 2-3. クリーンアップされたデータで、受付全体(Ordersヘッダー)を更新
+      const updatedData = {
+        selectedYear,
+        customer: customerInfo,
+        orders: nextOrders, // 削除後の注文リスト
+        receptionNumber,
+        allocationNumber,
+        paymentGroups: nextPaymentGroups, // 初期化後の支払いグループ
+        receipts: nextReceipts,           // 初期化後の領収書
+        orderType: '変更',
+        globalNotes,
+      };
+      
+      await updateOrderAPI(receptionNumber, updatedData);
+      
+      // 2-4. 全て成功したら、最後に画面のstateを更新
+      setOrders(nextOrders);
+      if (isOrderInPaymentGroup) {
+        setPaymentGroups(nextPaymentGroups);
+        setManualReceipts(nextReceipts);
+        setIsCombinedPaymentSummaryOpen(false);
+      }
+
+      alert(`注文番号「${orderToHandle.orderId}」を削除し、関連データを更新しました。`);
+
+    } catch (error) {
+      console.error('個別注文のキャンセル処理中にエラー:', error);
+      alert(`エラー: ${error.message}\nページの再読み込みをお勧めします。`);
+    } finally {
+      setIsLoading(false);
+    }
+  } else {
+    // --- 3. 新規注文の場合は、ローカルのstateを更新するだけ ---
+    setOrders(prev => prev.filter(o => o.id !== orderToHandle.id));
+    if (isOrderInPaymentGroup) {
+      setPaymentGroups([]);
+      setManualReceipts(prev => prev.filter(r => !r.groupId));
+      setIsCombinedPaymentSummaryOpen(false);
+    }
+  }
+};
 
   const handleCustomerInfoChange = (e) => {
     const { name, value, type, checked } = e.target;
     setCustomerInfo(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  const updateOrder = useCallback((orderId, updatedFields) => {
-    setOrders(prev => {
-      // 1. 更新対象の注文のインデックスを見つける
-      const orderIndex = prev.findIndex(o => o.id === orderId);
-      if (orderIndex === -1) return prev; // 見つからなければ何もしない
+  // page.js
 
-      const originalOrder = prev[orderIndex];
+const updateOrder = useCallback((orderId, updatedFields) => {
+  const originalOrder = orders.find(o => o.id === orderId);
+  if (!originalOrder) return;
 
-      // 2. もし「日付が更新」され、かつ「まだorderIdがない」場合
-      if (updatedFields.orderDate && updatedFields.orderDate !== originalOrder.orderDate) {
-        const tempOrderForIdGeneration = { ...originalOrder, ...updatedFields };
-        const newOrderId = generateOrderNumber(tempOrderForIdGeneration, receptionNumber, orderIndex);
-        
-        if (newOrderId !== '---') {
-          updatedFields.orderId = newOrderId;
-        }
+  let newOrderId = null;
+  const oldOrderId = originalOrder.orderId;
+
+  // --- 1. 注文番号が変更されるかチェック ---
+  if (updatedFields.orderDate && updatedFields.orderDate !== originalOrder.orderDate) {
+    const orderIndex = orders.findIndex(o => o.id === orderId);
+    const tempOrderForIdGeneration = { ...originalOrder, ...updatedFields };
+    const generatedId = generateOrderNumber(tempOrderForIdGeneration, receptionNumber, orderIndex);
+    
+    if (generatedId !== '---') {
+      newOrderId = generatedId;
+      updatedFields.orderId = newOrderId;
+    }
+  }
+
+  // --- 2. 注文番号が変更された場合の処理 ---
+  if (oldOrderId && newOrderId) {
+    let wasReferencedInPaymentGroup = false;
+    let wasReferencedInReceipt = false;
+
+    // 2-1. 支払いグループをチェックし、必要ならリセット
+    const nextPaymentGroups = paymentGroups.map(group => {
+      if (group.paymentDate === oldOrderId) {
+        wasReferencedInPaymentGroup = true;
+        return { ...group, paymentDate: '' }; // 支払日をリセット
       }
-
-      // 5. 注文情報を更新する
-      return prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o));
+      return group;
     });
-  }, [receptionNumber, generateOrderNumber]); // 依存配列にreceptionNumberとgenerateOrderNumberを追加
+
+    // 2-2. 領収書をチェックし、必要ならリセット
+    const nextManualReceipts = manualReceipts.map(receipt => {
+      if (receipt.issueDate === oldOrderId) {
+        wasReferencedInReceipt = true;
+        return { ...receipt, issueDate: '' }; // 発行日をリセット
+      }
+      return receipt;
+    });
+
+    // 2-3. もし参照されていたら、警告を表示し、Stateを更新
+    if (wasReferencedInPaymentGroup || wasReferencedInReceipt) {
+      // ユーザーのリクエストに合わせて警告メッセージを調整
+      alert("支払いグループの支払いをする注文が変更されました。\n関連する日付設定が初期化されますので、再度設定してください。");
+      
+      setPaymentGroups(nextPaymentGroups);
+      setManualReceipts(nextManualReceipts);
+    }
+  }
+
+  // --- 3. 最後にordersのStateを更新 ---
+  setOrders(prev =>
+    prev.map(o =>
+      o.id === orderId
+        ? { ...o, ...updatedFields }
+        : o
+    )
+  );
+
+}, [orders, receptionNumber, generateOrderNumber, paymentGroups, manualReceipts, setPaymentGroups, setManualReceipts]);
+  
 
   const addOrder = useCallback(() => {
     setOrders(prev => [...prev, createNewOrder()]);
   }, [createNewOrder]);
 
-  const deleteOrder = useCallback((orderId) => {
-    setOrders(prev => prev.filter(o => o.id !== orderId));
-  }, []);
 
   const calculateOrderTotal = useCallback((order) => {
     const mainTotal = (order.orderItems || []).reduce((total, item) => total + ((parseFloat(item.unitPrice) || 0) * (parseInt(item.quantity) || 0)), 0);
@@ -593,46 +700,57 @@ useEffect(() => {
     }));
   };
 
-  const autoGeneratedReceipts = paymentGroupsWithTotals.map(group => {
-    const docType = getDocumentType(customerInfo.paymentMethod) || '領収書';
-    const existingReceipt = manualReceipts.find(r => 
-      r.groupId === group.id || r.paymentGroupId === group.id
-    );
-
-    // ★★★ 修正 ★★★
-    // group.paymentDateにはリンクキー(orderId等)が直接入っているため、それをそのまま使う
-    const autoIssueDate = group.paymentDate || '';
-
-    if (existingReceipt) {
-      return {
-        ...existingReceipt,
-        groupId: group.id,
-        amount: existingReceipt.isAmountManuallyEdited 
-                ? existingReceipt.amount 
-                : group.total,
-        // ★ 正しいキーをセットするよう修正
-        issueDate: existingReceipt.isIssueDateManuallyEdited 
-                   ? existingReceipt.issueDate
-                   : autoIssueDate,
-        linkedPaymentDate: group.paymentDate
-      };
+  const finalReceipts = useMemo(() => {
+    // Priority 1: ユーザーが手動で詳細を指定した場合は、それを最優先する
+    if (manualReceipts.length > 0) {
+      return manualReceipts;
     }
 
-    // 新規の場合も同様に修正
-    return {
-      id: group.id,
-      groupId: group.id,
-      documentType: docType,
-      issueDate: autoIssueDate,
-      recipientName: customerInfo.invoiceName,
-      amount: group.total,
-      isAmountManuallyEdited: false,
-      isIssueDateManuallyEdited: false,
-      linkedPaymentDate: group.paymentDate
-    };
-  });
+    // Priority 2: 「まとめてお支払い」が設定されている場合は、グループに基づき自動生成
+    if (paymentGroupsWithTotals.length > 0) {
+      return paymentGroupsWithTotals.map(group => {
+        const docType = getDocumentType(customerInfo.paymentMethod) || '領収書';
+        return {
+          id: group.id,
+          groupId: group.id,
+          documentType: docType,
+          issueDate: group.paymentDate || '', // リンクキー(orderId)
+          recipientName: customerInfo.invoiceName,
+          amount: group.total,
+        };
+      });
+    }
 
-  const finalReceipts = manualReceipts.length > 0 ? manualReceipts : autoGeneratedReceipts;
+    // Priority 3: 上記以外の場合、注文ごとに領収書を自動生成（新規追加するロジック）
+    const docType = getDocumentType(customerInfo.paymentMethod);
+    // 書類種別と宛名が設定されている場合のみ実行
+    if (docType && customerInfo.invoiceName) {
+      // キャンセルされていない有効な注文のみを対象にする
+      const activeOrders = orders.filter(o => o.orderStatus !== 'CANCELED');
+      
+      return activeOrders.map((order, index) => ({
+        id: order.id,
+        documentType: docType,
+        // 発行日には、最終的な注文番号(orderId)を使用
+        issueDate: order.orderId || generateOrderNumber(order, receptionNumber, index),
+        recipientName: customerInfo.invoiceName,
+        amount: calculateOrderTotal(order)
+      }));
+    }
+
+    // 上記のいずれの条件にも当てはまらない場合は、空のリストを返す
+    return [];
+
+  }, [
+    manualReceipts, 
+    paymentGroupsWithTotals, 
+    orders, 
+    customerInfo, 
+    getDocumentType, 
+    calculateOrderTotal, 
+    receptionNumber, 
+    generateOrderNumber
+  ]);
 
   const uniqueOrderDates = [...new Set(orders.map(o => o.orderDate).filter(Boolean))];
   
@@ -642,7 +760,7 @@ useEffect(() => {
 
   return (
     <div className={isModalMode ? "modal-page-container" : "main-container"}>
-      {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleUpdate} customerInfo={customerInfo} orders={orders} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts} paymentGroups={paymentGroupsWithTotals} orderType="変更" globalNotes={globalNotes}/> )}
+      {isConfirmationOpen && ( <ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleUpdate} customerInfo={customerInfo} orders={orders.filter(o => o.orderStatus !== 'CANCELED')}  receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts} paymentGroups={paymentGroupsWithTotals} orderType="変更" globalNotes={globalNotes}/> )}
       <div className="main-content">
         <div className="form-container">
           <div className="form-header"> <h1 className="form-title">注文変更</h1> </div>
@@ -667,10 +785,10 @@ useEffect(() => {
                   order={order}
                   orderIndex={index}
                   updateOrder={updateOrder}
-                  deleteOrder={deleteOrder}
+                  isDeletable={true} // 常にボタンを表示
+                  deleteOrder={() => handleDeleteOrCancelOrder(order)}
                   PRODUCTS={PRODUCTS}
                   SIDE_ORDERS_DB={SIDE_ORDERS_DB}
-                  isDeletable={orders.length > 1}
                   orderNumberDisplay={orderNumberDisplay}
                   calculateOrderTotal={calculateOrderTotal}
                   addSideOrder={addSideOrder}
@@ -830,7 +948,22 @@ useEffect(() => {
               />
             </div>
             <div className="submit-container"> 
-              <button type="button" onClick={() => setIsConfirmationOpen(true)} className="confirm-btn"> この内容で更新を確認 </button>
+              <button 
+                type="button" 
+                onClick={handleCancelAll} 
+                className="cancel-btn"
+                disabled={!receptionNumber || isLoading}
+              >
+                この受付を全てキャンセル
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setIsConfirmationOpen(true)} 
+                className="confirm-btn"
+                disabled={isLoading}
+              >
+                この内容で更新を確認
+              </button>
             </div>
           </div>
           )}

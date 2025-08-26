@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import OrderItemsSection from './OrderItemsSection';
 import OrderOptionsSection from './OrderOptionsSection';
@@ -9,10 +9,10 @@ const SingleOrderSection = ({
   orderIndex,
   updateOrder,
   deleteOrder,
-  PRODUCTS,
-  SIDE_ORDERS_DB,
   isDeletable,
   orderNumberDisplay,
+  PRODUCTS,
+  SIDE_ORDERS_DB,
   addSideOrder,
   updateSideOrderQuantity,
   removeSideOrder,
@@ -22,32 +22,32 @@ const SingleOrderSection = ({
   customerAddress
 }) => {
 
-  const isSameAsCustomerAddress = order.isSameAddress !== false; // 未定義(undefined)の場合はtrueとして扱う
+  // 1. 注文がキャンセル済みかどうかを判定 (主に注文変更ページで使用)
+  const isCanceled = order.orderStatus === 'CANCELED';
+
+  const isSameAsCustomerAddress = order.isSameAddress !== false;
 
   useEffect(() => {
-    if (isSameAsCustomerAddress) {
-      // 「同上」がチェックされている場合、親から渡された完全な住所をコピー
+    // キャンセル済みでない場合のみ、住所を同期する
+    if (isSameAsCustomerAddress && !isCanceled) {
       if (order.deliveryAddress !== customerAddress) {
         updateOrder(order.id, { deliveryAddress: customerAddress });
       }
     }
-  }, [customerAddress, isSameAsCustomerAddress, order.id, updateOrder, order.deliveryAddress]);
+  }, [customerAddress, isSameAsCustomerAddress, order.id, updateOrder, order.deliveryAddress, isCanceled]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     updateOrder(order.id, { [name]: value });
   };
   
-  // ★ 2. チェックボックスのハンドラを修正
   const handleSameAddressChange = (e) => {
     const isChecked = e.target.checked;
     updateOrder(order.id, {
       isSameAddress: isChecked,
-      // ★ チェックが外れたら住所をクリア、入ったら親の住所をコピー
       deliveryAddress: isChecked ? customerAddress : ''
     });
   };
- 
 
   const handleItemChange = (itemIndex, field, value) => {
     const halfWidthValue = String(value).replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0));
@@ -100,60 +100,77 @@ const SingleOrderSection = ({
   const totalAmountForThisOrder = calculateOrderTotal(order);
 
   return (
-    <div className="single-order-section">
+    // 2. キャンセル済みの場合にCSSクラスを付与して見た目を変える
+    <div className={`single-order-section ${isCanceled ? 'is-canceled' : ''}`}>
       <div className="single-order-header">
         <h3 className="single-order-title">注文 #{orderIndex + 1}<span className="order-id-display">({orderNumberDisplay})</span></h3>
-        {isDeletable && <button onClick={() => deleteOrder(order.id)} className="single-order-delete-btn" title="この注文を削除"> <X size={24} /> </button>}
-      </div>
-      <div className="single-order-content">
-        <div className="single-order-field">
-          <label className="single-order-label">お届け日</label>
-          <div className="order-schedule-container">
-            <select name="orderDate" value={order.orderDate} onChange={handleInputChange} className="single-order-select"> <option value="">日付を選択</option> {availableDates.map((date) => (<option key={date} value={date}>{date}</option>))} </select>
-            <select name="orderTime" value={order.orderTime} onChange={handleInputChange} className="single-order-select"> <option value="">時間を選択</option> {availableTimes.map((time) => (<option key={time} value={time}>{time}</option>))} </select>
-          </div>
-        </div>
-        <div className="single-order-field">
-        <label className="single-order-label">お届け先住所</label>
-        <div className="address-checkbox-container">
-          <input
-            type="checkbox"
-            id={`same-address-check-${order.id}`}
-            checked={isSameAsCustomerAddress}
-            onChange={handleSameAddressChange}
-          />
-          <label htmlFor={`same-address-check-${order.id}`}>発注者の住所と同じ</label>
-        </div>
         
-        {!isSameAsCustomerAddress && (
-          <textarea 
-            name="deliveryAddress" 
-            value={order.deliveryAddress} 
-            onChange={handleInputChange} 
-            rows="3" 
-            className="single-order-textarea"
-            placeholder="お届け先の住所を手入力してください"
-          />
+        {/* 3. isDeletableがtrueの時だけ削除ボタンを表示し、キャンセル済みなら無効化 */}
+        {isDeletable && (
+          <button 
+            onClick={deleteOrder} 
+            className="single-order-delete-btn" 
+            title="この注文を削除またはキャンセル"
+            disabled={isCanceled}
+          >
+            <X size={24} />
+          </button>
         )}
       </div>
-        <OrderItemsSection orderItems={order.orderItems} handleItemChange={handleItemChange} totalAmount={totalAmountForThisOrder}/>
-        <OrderOptionsSection
-          order={order}
-          updateOrder={updateOrder}
-          PRODUCTS={PRODUCTS}
-          SIDE_ORDERS_DB={SIDE_ORDERS_DB}
-          getOrderedProducts={getOrderedProducts}
-          addNetaChangePattern={addNetaChangePattern}
-          removeNetaChangePattern={removeNetaChangePattern}
-          handleNetaChangeDetail={handleNetaChangeDetail}
-          handleNetaSelection={handleNetaSelection}
-          getMaxQuantityForPattern={getMaxQuantityForPattern}
-          addSideOrder={addSideOrder}
-          updateSideOrderQuantity={updateSideOrderQuantity}
-          removeSideOrder={removeSideOrder}
-        />
-      </div>
+      
+      {/* 4. キャンセル済みの場合にバッジを表示 */}
+      {isCanceled && <div className="canceled-badge">キャンセル済み</div>}
+
+      {/* 5. fieldsetで全体を囲み、キャンセル済みなら全てのフォーム操作を無効化 */}
+      <fieldset disabled={isCanceled} className="single-order-fieldset">
+        <div className="single-order-content">
+          <div className="single-order-field">
+            <label className="single-order-label">お届け日</label>
+            <div className="order-schedule-container">
+              <select name="orderDate" value={order.orderDate} onChange={handleInputChange} className="single-order-select">
+                <option value="">日付を選択</option>
+                {availableDates.map((date) => (<option key={date} value={date}>{date}</option>))}
+              </select>
+              <select name="orderTime" value={order.orderTime} onChange={handleInputChange} className="single-order-select">
+                <option value="">時間を選択</option>
+                {availableTimes.map((time) => (<option key={time} value={time}>{time}</option>))}
+              </select>
+            </div>
+          </div>
+          <div className="single-order-field">
+            <label className="single-order-label">お届け先住所</label>
+            <div className="address-checkbox-container">
+              <input type="checkbox" id={`same-address-check-${order.id}`} checked={isSameAsCustomerAddress} onChange={handleSameAddressChange} />
+              <label htmlFor={`same-address-check-${order.id}`}>発注者の住所と同じ</label>
+            </div>
+            {!isSameAsCustomerAddress && (
+              <textarea name="deliveryAddress" value={order.deliveryAddress} onChange={handleInputChange} rows="3" className="single-order-textarea" placeholder="お届け先の住所を手入力してください" />
+            )}
+          </div>
+          <OrderItemsSection 
+            orderItems={order.orderItems} 
+            handleItemChange={handleItemChange} 
+            totalAmount={totalAmountForThisOrder}
+          />
+          <OrderOptionsSection
+            order={order}
+            updateOrder={updateOrder}
+            PRODUCTS={PRODUCTS}
+            SIDE_ORDERS_DB={SIDE_ORDERS_DB}
+            getOrderedProducts={getOrderedProducts}
+            addNetaChangePattern={addNetaChangePattern}
+            removeNetaChangePattern={removeNetaChangePattern}
+            handleNetaChangeDetail={handleNetaChangeDetail}
+            handleNetaSelection={handleNetaSelection}
+            getMaxQuantityForPattern={getMaxQuantityForPattern}
+            addSideOrder={addSideOrder}
+            updateSideOrderQuantity={updateSideOrderQuantity}
+            removeSideOrder={removeSideOrder}
+          />
+        </div>
+      </fieldset>
     </div>
   );
 };
+
 export default SingleOrderSection;

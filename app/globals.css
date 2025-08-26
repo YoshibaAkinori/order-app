@@ -346,6 +346,30 @@ button {
   border-radius: 0.5rem;
   background-color: #ffffff;
 }
+/* キャンセルされたセクション全体を少し薄くする */
+.single-order-section.is-canceled {
+  opacity: 0.6;
+  background-color: #f7f7f7;
+}
+
+/* fieldsetのデフォルトスタイルをリセット */
+.single-order-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* キャンセル済みバッジのスタイル */
+.canceled-badge {
+  color: #d9534f; /* 赤系の色 */
+  font-weight: bold;
+  text-align: center;
+  padding: 8px;
+  background-color: #f2dede;
+  border: 1px solid #ebccd1;
+  border-radius: 4px;
+  margin: 0 1rem 1rem 1rem;
+}
 
 /* ========================================
    OrderItemsSection.js
@@ -1101,13 +1125,6 @@ button {
 /* ========================================
    Submit Container Buttons
    ======================================== */
-.submit-container {
-  text-align: center;
-  padding-top: 2.5rem;
-  display: flex; /* ★ Flexboxに変更 */
-  justify-content: center; /* ★ 中央揃え */
-  gap: 1rem; /* ★ ボタン間のスペース */
-}
 
 .confirm-btn {
   display: inline-flex;
@@ -1123,6 +1140,74 @@ button {
 }
 .confirm-btn:hover {
   background-color: #ea580c;
+}
+/* 送信・キャンセルボタンのコンテナ */
+.submit-container {
+  display: flex;
+  justify-content: flex-end; /* ボタンを右揃えに */
+  gap: 1rem; /* ボタン間のスペース */
+  margin-top: 2rem;
+}
+
+/* 基本的なボタンスタイル（既存のconfirm-btnと共通化も可） */
+.confirm-btn, .cancel-btn {
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+
+/* =================================== */
+/* キャンセルボタン            */
+/* =================================== */
+
+/* 受付全体をキャンセルするボタン */
+.cancel-btn {
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #dc3545; /* 赤系の枠線 */
+  background-color: #dc3545; /* 赤系の背景色 */
+  color: white;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.cancel-btn:hover {
+  background-color: #c82333; /* 少し濃い赤 */
+  border-color: #c82333;
+}
+.cancel-btn:disabled {
+  background-color: #cccccc;
+  border-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* 各注文の削除(×)ボタン */
+.single-order-delete-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #888; /* 通常時の色を少し薄く */
+  border-radius: 50%; /* 円形にする */
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.single-order-delete-btn:hover {
+  color: #dc3545; /* ホバー時に赤色に */
+  background-color: #fbeaea; /* ホバー時に薄い赤の背景 */
+}
+.single-order-delete-btn:disabled {
+  color: #cccccc;
+  cursor: not-allowed;
+  background-color: transparent;
 }
 
 
@@ -2291,3 +2376,4 @@ th {
   font-size: 0.9rem;
   min-width: auto;
 }
+
