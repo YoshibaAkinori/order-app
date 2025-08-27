@@ -50,6 +50,7 @@ export default function MainLayout({ children }) {
             <a href="./dashboard" onClick={() => setIsSidebarOpen(false)}>注文一覧</a>
             <a href="./allocations" onClick={() => setIsSidebarOpen(false)}>割り当て管理</a>
             <a href="./netacounts" onClick={() => setIsSidebarOpen(false)}>ネタ数</a>
+            <a href="./netachange" onClick={() => setIsSidebarOpen(false)}>ネタ変更詳細</a>
             <a href="./settings" onClick={() => setIsSidebarOpen(false)}>設定管理</a>
             <a href="./Log" onClick={() => setIsSidebarOpen(false)}>変更ログ</a>
             <div style={{marginTop: 'auto'}}>

@@ -67,8 +67,8 @@ const SummaryPage = () => {
         };
     });
 
-    // 注文をループしてネタ数を集計
-   (filtered_orders || []).forEach(order => {
+    // STEP 1: 通常商品のネタを計算
+    (filtered_orders || []).forEach(order => {
         (order.orderItems || []).forEach(item => {
             const productKey = item.productKey;
             const totalItemQty = item.quantity || 0;
@@ -78,44 +78,44 @@ const SummaryPage = () => {
             const neta_changes_patterns = order.netaChanges?.[productKey] || [];
             let changed_qty_total = 0;
             
-            // まず、変更パターンがあるものを先に処理
             neta_changes_patterns.forEach(pattern => {
-                const pattern_qty = pattern.quantity || 0;
-                changed_qty_total += pattern_qty;
+                const isTrueNetaChange = Object.keys(pattern.selectedNeta || {}).length > 0;
+                if (isTrueNetaChange) {
+                    const pattern_qty = pattern.quantity || 0;
+                    changed_qty_total += pattern_qty;
+                    const originalNetaSet = new Set((productMaster.neta || []).map(n => n.name));
+                    const removedNetaSet = new Set(Object.keys(pattern.selectedNeta || {}));
+                    const addedNeta = pattern.to_neta || [];
+                    const finalNetaSet = new Set(originalNetaSet);
+                    removedNetaSet.forEach(neta => finalNetaSet.delete(neta));
+                    addedNeta.forEach(neta => finalNetaSet.add(neta));
 
-                const originalNetaSet = new Set((productMaster.neta || []).map(n => n.name));
-                const removedNetaSet = new Set(Object.keys(pattern.selectedNeta || {}));
-                const addedNeta = pattern.to_neta || [];
-
-                const finalNetaSet = new Set(originalNetaSet);
-                removedNetaSet.forEach(neta => finalNetaSet.delete(neta));
-                addedNeta.forEach(neta => finalNetaSet.add(neta));
-
-                finalNetaSet.forEach(netaName => {
-                    if(neta_summary.hasOwnProperty(netaName)){
-                        neta_drilldown[netaName].breakdown[productKey] += pattern_qty;
-                    }
-                });
-
-                removedNetaSet.forEach(netaName => {
-                    if(neta_drilldown.hasOwnProperty(netaName)){
-                        neta_drilldown[netaName].changeTotal -= pattern_qty;
-                    }
-                });
-                addedNeta.forEach(netaName => {
-                    if(neta_drilldown.hasOwnProperty(netaName)){
-                        neta_drilldown[netaName].changeTotal += pattern_qty;
-                    }
-                });
+                    finalNetaSet.forEach(netaName => {
+                        if(neta_drilldown.hasOwnProperty(netaName)){
+                            const netaInfo = (productMaster.neta || []).find(n => n.name === netaName);
+                            const netaBaseQty = netaInfo ? (netaInfo.quantity || 1) : 1;
+                            neta_drilldown[netaName].breakdown[productKey] += netaBaseQty * pattern_qty;
+                        }
+                    });
+                    removedNetaSet.forEach(netaName => {
+                        if(neta_drilldown.hasOwnProperty(netaName)){
+                            neta_drilldown[netaName].changeTotal -= pattern_qty;
+                        }
+                    });
+                    addedNeta.forEach(netaName => {
+                        if(neta_drilldown.hasOwnProperty(netaName)){
+                            neta_drilldown[netaName].changeTotal += pattern_qty;
+                        }
+                    });
+                }
             });
 
-            // 次に、変更されなかった通常分を処理
             const normal_qty = totalItemQty - changed_qty_total;
             if (normal_qty > 0) {
                 (productMaster.neta || []).forEach(neta => {
                     const netaName = neta.name;
                     const netaQty = neta.quantity || 1;
-                     if(neta_summary.hasOwnProperty(netaName)){
+                     if(neta_drilldown.hasOwnProperty(netaName)){
                         neta_drilldown[netaName].breakdown[productKey] += netaQty * normal_qty;
                     }
                 });
@@ -123,13 +123,38 @@ const SummaryPage = () => {
         });
     });
     
-    // 最後に、drilldownのbreakdownとchangeTotalを元に、最終的なneta_summaryを計算
+    // ### ▼▼▼ 変更箇所 ▼▼▼ ###
+    // STEP 2: サイドオーダー（特別注文）に含まれるネタを集計する
+    (filtered_orders || []).forEach(order => {
+        (order.sideOrders || []).forEach(sideItem => {
+            const productKey = sideItem.productKey;
+            const itemQty = sideItem.quantity || 0;
+            const sideProductMaster = masters.specialMenus?.[productKey];
+
+            if (sideProductMaster && itemQty > 0) {
+                (sideProductMaster.neta || []).forEach(neta => {
+                    const netaName = neta.name;
+                    const netaQtyPerItem = neta.quantity || 1;
+                    const totalNetaQty = netaQtyPerItem * itemQty;
+
+                    if (neta_drilldown.hasOwnProperty(netaName)) {
+                        // ドリルダウンの「ネタ変(計)」の列（プラス分）に加算する
+                        neta_drilldown[netaName].changeTotal += totalNetaQty;
+                    }
+                });
+            }
+        });
+    });
+    // ### ▲▲▲ 変更箇所 ▲▲▲ ###
+
+    // STEP 3: 全ての集計を元に最終的な合計(neta_summary)を計算
     Object.keys(neta_drilldown).forEach(netaName => {
         const drilldown = neta_drilldown[netaName];
         const breakdownTotal = Object.values(drilldown.breakdown).reduce((sum, val) => sum + val, 0);
+        // changeTotal にサイドオーダー分が加算された状態で合計を出す
         neta_summary[netaName] = breakdownTotal + drilldown.changeTotal;
     });
-
+    
     return { product_summary, other_orders_summary, masters, neta_summary, neta_drilldown };
   }, [apiData]);
 
@@ -153,7 +178,7 @@ const SummaryPage = () => {
     return totals;
   }, [summaryData]);
 
-  const productList = summaryData ? Object.keys(summaryData.masters.products) : [];
+  const productList = summaryData ? Object.keys(summaryData.masters.products).sort((a,b) => Number(a) - Number(b)) : [];
   const sortedNetaList = useMemo(() => {
     if (!summaryData || !summaryData.masters.netaMaster) return [];
     

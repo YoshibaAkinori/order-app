@@ -1,8 +1,7 @@
 "use client";
 import React from 'react'; // useState, useEffectは不要になったので削除
 
-const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, onLocationSelect, allocationNumber }) => {
-
+const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, onLocationSelect, allocationNumber, isOtherSelected }) => {
 
 
   const handleSelectChange = (e) => {
@@ -10,11 +9,6 @@ const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, on
     onLocationSelect(e.target.value);
   };
 
-
-  const otherKey = Object.keys(allocationMaster || {}).find(key => allocationMaster[key].address === 'その他');
-  
-
-  const isOtherSelected = allocationNumber === otherKey;
 
   return (
     <div className="customer-info-section">
@@ -76,7 +70,7 @@ const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, on
               <input
                 type="text"
                 name="address"
-                //value={formData.address}
+                value={formData.address}
                 onChange={handleInputChange}
                 className="customer-info-input"
                 placeholder="住所を入力してください"
@@ -87,7 +81,7 @@ const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, on
             <div className="customer-info-field">
               <label className="customer-info-label">階数</label>
               <input
-                type="number"
+                type="text" // ★★★ typeを"text"に変更して"0"も扱えるようにする ★★★
                 name="floorNumber"
                 value={formData.floorNumber}
                 onChange={handleInputChange}

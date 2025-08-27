@@ -94,6 +94,13 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
       return '---';
     }
   }, []);
+  const otherKey = useMemo(() => {
+    if (!ALLOCATION_MASTER) return null;
+    // allocationMasterの中から、値が「その他」である項目のキーを探す
+    return Object.keys(ALLOCATION_MASTER).find(key => 
+      ALLOCATION_MASTER[key].address === 'その他'
+    );
+  }, [ALLOCATION_MASTER]);
 
   const resetForm = () => {
     setCustomerInfo(initialCustomerInfo);
@@ -620,33 +627,38 @@ useEffect(() => {
 }, [paymentGroupsWithTotals, customerInfo.paymentMethod, customerInfo.invoiceName, orders]);
 
   const customerFullAddress = useMemo(() => {
-    if (!customerInfo.address) return '';
-    return customerInfo.floorNumber
-      ? `${customerInfo.address} ${customerInfo.floorNumber}F`
-      : customerInfo.address;
-  }, [customerInfo.address, customerInfo.floorNumber]);
+  if (!customerInfo.address) return '';
+
+  // ★★★ 階数が0より大きい有効な数値の場合のみ「F」を追加する ★★★
+  const floor = parseInt(customerInfo.floorNumber, 10);
+  if (!isNaN(floor) && floor > 0) {
+    return `${customerInfo.address} ${floor}F`;
+  }
+  
+  // それ以外の場合は、住所のみを返す
+  return customerInfo.address;
+}, [customerInfo.address, customerInfo.floorNumber]);
 
   const handleLocationSelect = useCallback((prefix) => {
-    setAllocationNumber(prefix);
-    
-    let newAddress = '';
-    let newCompanyName = '';
-    
-    if (prefix && prefix !== 'その他') {
-      const allocationData = ALLOCATION_MASTER[prefix];
-      if (allocationData) {
-        newAddress = allocationData.address || '';
-        newCompanyName = allocationData.locationName || '';
-      }
-    }
-    
+  setAllocationNumber(prefix);
+  
+  // ★★★ 「その他」のキーと比較する形に修正 ★★★
+  if (prefix && prefix !== otherKey) {
+    const allocationData = ALLOCATION_MASTER[prefix];
     setCustomerInfo(prev => ({
       ...prev,
-      companyName: newCompanyName,
-      address: newAddress,
+      address: allocationData?.address || '',
       floorNumber: '',
     }));
-  }, [ALLOCATION_MASTER]);
+  } else {
+    // ★★★ 「その他」が選択されたら、住所は空にして手入力できるようにする ★★★
+    setCustomerInfo(prev => ({
+      ...prev,
+      address: '', 
+      floorNumber: '',
+    }));
+  }
+}, [ALLOCATION_MASTER, otherKey]);
 
   const handleToggleReceiptDetails = () => setIsReceiptDetailsOpen(prev => !prev);
   
@@ -772,6 +784,7 @@ useEffect(() => {
               allocationMaster={ALLOCATION_MASTER}
               onLocationSelect={handleLocationSelect}
               allocationNumber={allocationNumber} 
+              isOtherSelected={allocationNumber === otherKey}
         />
             {orders.map((order, index) => {
               const orderNumberDisplay = order.orderId || '（新規追加）';

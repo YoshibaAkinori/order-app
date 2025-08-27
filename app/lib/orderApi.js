@@ -5,10 +5,6 @@ export const searchOrders = async (date, route, selectedYear) => {
   const formattedDate = date.replaceAll('/', '-');
   // ★ 2. URLに year パラメータを追加
   let apiUrl = `${BASE_URL}/orders/search?date=${formattedDate}&year=${selectedYear}`;
-  
-  if (route) {
-    apiUrl += `&route=${encodeURIComponent(route)}`;
-  }
 
   const response = await fetch(apiUrl);
   if (!response.ok) {

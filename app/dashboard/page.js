@@ -5,7 +5,7 @@ import { searchOrders } from '../lib/orderApi';
 import ChangeOrderPage from '../change/page';
 
 // 注文情報を整形して表示するためのヘルパーコンポーネント
-const OrderInfoCell = ({ order, productsMaster }) => {
+const OrderInfoCell = ({ order}) => {
   return (
     <div>
       {/* 通常商品 */}
@@ -27,11 +27,9 @@ const OrderInfoCell = ({ order, productsMaster }) => {
               const isNetaStructurallyChanged = removedNeta.length > 0;
               
               let details = [];
-              // ★ 純粋なネタ変更の場合、抜いたネタを表示
               if (isNetaStructurallyChanged) {
                 details.push(`${removedNeta.join('、')}抜き`);
               }
-              // ★ ワサビや折の情報は、ネタ変更の有無に関わらず追加
               if (pattern.wasabi === '抜き') details.push('さび抜き');
               if (pattern.isOri) details.push('折');
               
@@ -54,13 +52,12 @@ const OrderInfoCell = ({ order, productsMaster }) => {
   );
 };
 
-// ★ 2. 「備考」列を生成するためのヘルパーコンポーネント
+// 「備考」列を生成するためのヘルパーコンポーネント
 const NotesCell = ({ order, productsMaster }) => {
   const notes = [];
   if (order.notes) {
     notes.push(order.notes);
   }
-  // ★ paymentNoteプロパティを直接参照
   if (order.paymentNote) {
     notes.push(order.paymentNote);
   }
@@ -71,7 +68,6 @@ const NotesCell = ({ order, productsMaster }) => {
       const removedNeta = Object.keys(pattern.selectedNeta || {});
       const addedNeta = pattern.to_neta || [];
       
-      // ★ 抜いたネタ、または追加したネタがある純粋なネタ変更の場合のみ備考を生成
       if (removedNeta.length > 0 || addedNeta.length > 0) {
         const originalSet = new Set(originalNeta);
         removedNeta.forEach(neta => originalSet.delete(neta));
@@ -109,61 +105,51 @@ const OrderListPage = () => {
   
   const productsMaster = useMemo(() => apiData?.masters?.products || {}, [apiData]);
 
-  // ★★★ 1. このuseMemoフックを、以下の新しいロジックに丸ごと置き換える ★★★
   const processedOrders = useMemo(() => {
     if (!apiData || !apiData.orders) return [];
-
     const ordersWithNotes = apiData.orders.map(o => ({
       ...o,
       paymentNote: '',
-      displayOrderTotal: o.orderTotal, // ★ 表示用の金額を新しく作る
+      displayOrderTotal: o.orderTotal,
     }));
-
     const ordersMap = new Map(ordersWithNotes.map(o => [o.orderId, o]));
-
     const allPaymentGroups = apiData.orders.flatMap(o => o.paymentGroups || []);
     const seenGroupIds = new Set();
-    
     allPaymentGroups.forEach(group => {
       if (seenGroupIds.has(group.id)) return;
       seenGroupIds.add(group.id);
-
       const checkedOrderIds = Object.keys(group.checkedOrderIds || {});
       if (checkedOrderIds.length === 0) return;
-
-      const payingOrderId = group.paymentDate; // これが支払日の注文番号
-      
-      // 支払う側の注文を処理
+      const payingOrderId = group.paymentDate;
       const payingOrder = ordersMap.get(payingOrderId);
       if (payingOrder) {
         const paidForOrderIds = checkedOrderIds.filter(id => id !== payingOrderId);
         if (paidForOrderIds.length > 0) {
           payingOrder.paymentNote = `${paidForOrderIds.join(', ')} の分もお支払い`;
-          payingOrder.displayOrderTotal = group.total; // ★ 金額をグループの合計に上書き
+          payingOrder.displayOrderTotal = group.total;
         }
       }
-
-      // 支払われる側の注文を処理
       checkedOrderIds.forEach(id => {
         if (id !== payingOrderId) {
           const paidForOrder = ordersMap.get(id);
           if (paidForOrder) {
             paidForOrder.paymentNote = `${payingOrderId}でお支払い`;
-            paidForOrder.displayOrderTotal = 0; // ★ 金額を0に上書き
+            paidForOrder.displayOrderTotal = 0;
           }
         }
       });
     });
-
     return Array.from(ordersMap.values());
   }, [apiData]);
-
+  
   const handleFetch = async () => {
     if (!selectedDate) { alert('日付を選択してください。'); return; }
-    setIsLoading(true); setError(null);
+    setIsLoading(true); 
+    setError(null);
+    setSelectedRoute('');
+
     try {
-      // ★ APIからは常に日付全体のデータを取得する
-      const data = await searchOrders(selectedDate, selectedRoute, selectedYear); 
+      const data = await searchOrders(selectedDate, '', selectedYear); 
       setApiData(data);
     } catch (err) { setError(err.message); setApiData(null); }
     finally { setIsLoading(false); }
@@ -178,15 +164,11 @@ const OrderListPage = () => {
     setIsChangeModalOpen(false);
     handleFetch();
   };
-
   
-  // ★★★ 2. 絞り込みと並び替えのロジックを修正 ★★★
   const filteredOrders = useMemo(() => {
-    // まず、加工済みの全注文リストから絞り込みを行う
     const filteredByRoute = selectedRoute 
       ? processedOrders.filter(order => order.assignedRoute === selectedRoute)
       : processedOrders;
-
     const filteredBySearch = searchTerm
       ? filteredByRoute.filter(order => 
           Object.values(order).some(value => 
@@ -194,7 +176,6 @@ const OrderListPage = () => {
           )
         )
       : filteredByRoute;
-
     return filteredBySearch.sort((a, b) => (a.orderId || '').localeCompare(b.orderId || ''));
   }, [processedOrders, selectedRoute, searchTerm]);
 
@@ -211,18 +192,30 @@ const OrderListPage = () => {
         </div>
       )}
 
-
       <h1 className="admin-header">注文一覧 ({selectedYear}年)</h1>
+
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'flex-end',
+        marginBottom: '10px'
+      }}>
+        <div style={{ 
+          fontSize: '1.5em', 
+          whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          <span style={{ color: 'blue', fontWeight: 'bold' }}>領収書：青</span>
+          <span style={{ margin: '0 5px' }}>|</span>
+          <span style={{ color: '#C00000', fontWeight: 'bold' }}>請求書：赤</span>
+        </div>
+      </div>
       
       <div className="list-controls">
         <div className="filters">
           <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}>
             <option value="">日付選択</option>
             {deliveryDates.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <select value={selectedRoute} onChange={(e) => setSelectedRoute(e.target.value)}>
-            <option value="">担当選択 (すべて)</option>
-            {(deliveryRoutes || []).map(w => <option key={w} value={w}>{w}</option>)}
           </select>
           <button onClick={handleFetch} disabled={isLoading}>
             {isLoading ? '読込中...' : '表示'}
@@ -235,6 +228,10 @@ const OrderListPage = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          <select value={selectedRoute} onChange={(e) => setSelectedRoute(e.target.value)}>
+            <option value="">担当選択 (すべて)</option>
+            {(deliveryRoutes || []).map(w => <option key={w} value={w}>{w}</option>)}
+          </select>
           <button>一覧Excel</button>
           <button>ラベルExcel</button>
           <button>宛名Excel</button>
@@ -251,11 +248,11 @@ const OrderListPage = () => {
             <th>時間</th>
             <th>担当者</th>
             <th>電話番号</th>
-            <th>書類</th>
             <th>宛名</th>
             <th>注文情報</th>
             <th>備考</th>
             <th>支払金額</th>
+            <th>割り当て</th>
           </tr>
         </thead>
         <tbody>
@@ -270,11 +267,29 @@ const OrderListPage = () => {
               <td>{order.deliveryTime}</td>
               <td>{order.contactName}</td>
               <td>{order.tel}</td>
-              <td>{order.receiptType}</td>
-              <td>{order.recipientName}</td>
+              {/* ### ▼▼▼ 変更箇所 ▼▼▼ ### */}
+              <td>
+                {(order.receipts || [])
+                  .filter(receipt => receipt.issueDate === order.orderId) // 1. issueDate と orderId が一致するものだけを抽出
+                  .map((receipt, index) => {
+                    // 2. documentType に応じてスタイルを定義
+                    const recipientStyle = {
+                      color: receipt.documentType === '領収書' ? 'blue' : (receipt.documentType === '請求書' ? '#C00000' : 'inherit'),
+                      fontWeight: 'bold'
+                    };
+
+                    return (
+                      <div key={receipt.id || index} style={recipientStyle}>
+                        {receipt.recipientName}
+                      </div>
+                    );
+                })}
+              </td>
+              {/* ### ▲▲▲ 変更箇所 ▲▲▲ ### */}
               <td><OrderInfoCell order={order} productsMaster={productsMaster} /></td>
               <td><NotesCell order={order} productsMaster={productsMaster} /></td>
               <td>¥{(order.displayOrderTotal || 0).toLocaleString()}</td>
+              <td>{order.assignedRoute}</td>
             </tr>
           ))}
         </tbody>
