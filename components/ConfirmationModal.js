@@ -166,9 +166,9 @@ const ConfirmationModal = ({
                   <table className="conf-items-table">
                     <thead>
                       <tr>
-                        <th>品名</th>
-                        <th>単価</th>
-                        <th>個数</th>
+                        <th>分類</th>
+                        <th>お渡しする注文番号</th>
+                        <th>宛名</th>
                         <th>金額</th>
                       </tr>
                     </thead>

@@ -1,0 +1,52 @@
+/* yoshibaakinori/order-app/order-app-ca22d44240d5d2c566e4d42c4d0e60ac644d1bf8/app/order-confirmation/order-confirmation.css */
+
+/* 注文入力時の確認モーダルからスタイルを流用・調整 */
+.confirmation-document {
+    background-color: #fff;
+    padding: 2rem;
+    border: 1px solid #ddd;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    max-width: 800px;
+    margin: 2rem auto;
+}
+
+.conf-doc-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+.conf-logo { font-size: 1.8rem; font-weight: bold; }
+.conf-doc-title h1 { margin: 0; font-size: 1.5rem; }
+.conf-doc-title p { margin: 0.2rem 0; font-size: 0.9rem; text-align: right; }
+
+.conf-section { margin-bottom: 1.5rem; }
+.conf-current-date { font-style: italic; color: #555; }
+.conf-order-title { font-size: 1.2rem; margin-bottom: 0.8rem; border-bottom: 1px solid #eee; padding-bottom: 0.4rem; }
+
+.conf-details-grid, .conf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; }
+.conf-grid-item .conf-label { font-size: 0.8rem; color: #666; }
+.conf-grid-item .conf-value { font-size: 1rem; font-weight: 500; }
+.conf-grid-item .conf-value-order { font-size: 0.9rem; }
+
+.conf-order-block { border-top: 1px dashed #ccc; padding-top: 1.5rem; }
+
+.conf-items-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 1rem; }
+.conf-items-table th, .conf-items-table td { border: 1px solid #ddd; padding: 0.5rem; text-align: right; }
+.conf-items-table th:first-child, .conf-items-table td:first-child { text-align: left; }
+.conf-items-table thead th { background-color: #f7f7f7; }
+.conf-items-table tfoot td { font-weight: bold; }
+
+.conf-payment-group { margin-bottom: 1rem; }
+.conf-grand-total { display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; padding-top: 0.5rem; }
+
+.conf-notes-text { white-space: pre-wrap; background: #f9f9f9; padding: 1rem; border-radius: 4px; }
+
+.conf-footer { text-align: center; border-top: 2px solid #333; padding-top: 1rem; margin-top: 2rem; font-size: 0.8rem; color: #555; }
+.conf-footer p { margin: 0.1rem 0; }
+
+.print-controls { text-align: right; max-width: 800px; margin: 1rem auto; padding: 0 2rem; }
+.print-button { background-color: #007bff; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; }
+
+/* 印刷時専用スタイル */
+@media print {
+    body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .print-controls { display: none; }
+    .confirmation-document { margin: 0; padding: 0; border: none; box-shadow: none; max-width: 100%; }
+}
+@page { size: A4; margin: 20mm; }

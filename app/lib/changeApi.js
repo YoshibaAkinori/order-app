@@ -31,7 +31,13 @@ const request = async (endpoint, options = {}) => {
 };
 
 // 各APIに対応する関数をエクスポート
-export const searchOrderAPI = (receptionNum) => request(`orders/${receptionNum}`);
+export const searchOrderAPI = (receptionNum, year) => {
+    if (!receptionNum || !year) {
+        // エラーを防ぐため、パラメータが不足している場合はリクエストを送らない
+        return Promise.reject(new Error("受付番号と年は必須です。"));
+    }
+    return request(`orders/${receptionNum}?year=${year}`);
+};
 
 export const updateOrderAPI = (receptionNum, data) => request(`orders/${receptionNum}`, {
     method: 'PUT',

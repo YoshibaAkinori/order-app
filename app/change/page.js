@@ -135,7 +135,7 @@ const handleSearch = async () => {
   }
   
   try {
-    const data = await searchOrderAPI(receptionNumToSearch);
+    const data = await searchOrderAPI(receptionNumToSearch, selectedYear);
 
     const loadedCustomerInfo = data.customerInfo || {};
     const sanitizedCustomerInfo = {

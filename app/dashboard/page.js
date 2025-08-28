@@ -3,6 +3,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useConfiguration } from '../contexts/ConfigurationContext';
 import { searchOrders } from '../lib/orderApi';
 import ChangeOrderPage from '../change/page';
+import Link from 'next/link';
 
 // 注文情報を整形して表示するためのヘルパーコンポーネント
 const OrderInfoCell = ({ order}) => {
@@ -253,10 +254,13 @@ const OrderListPage = () => {
             <th>備考</th>
             <th>支払金額</th>
             <th>割り当て</th>
+            <th className="px-4 py-2">PDF出力</th>
           </tr>
         </thead>
         <tbody>
-          {filteredOrders.map(order => (
+          {filteredOrders.map(order => {
+            const hasEmail = order.customerInfo && order.customerInfo.email;
+          return(
             <tr key={order.orderId}>
               <td>
                 <button onClick={() => openChangeModal(order.orderId)} className="link-button">
@@ -290,8 +294,30 @@ const OrderListPage = () => {
               <td><NotesCell order={order} productsMaster={productsMaster} /></td>
               <td>¥{(order.displayOrderTotal || 0).toLocaleString()}</td>
               <td>{order.assignedRoute}</td>
+              <td className="border px-4 py-2 text-center">
+                {hasEmail ? (
+                  <Link
+                    href={`/order-confirmation/${order.receptionNumber}/${selectedYear}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="gray-button"
+                  >
+                    PDF
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/order-confirmation/${order.receptionNumber}/${selectedYear}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="red-border-button"
+                  >
+                    PDF
+                  </Link>
+                )}
+              </td>
             </tr>
-          ))}
+          );
+        })}
         </tbody>
       </table>
     </div>
