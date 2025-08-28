@@ -8,7 +8,7 @@ const YearSelector = ({ showLabel = true, className = "", onYearChange }) => {
   const generateYearOptions = () => {
     const currentYear = new Date().getFullYear();
     const years = [];
-    for (let i = currentYear - 1; i <= currentYear + 1; i++) {
+    for (let i = currentYear - 2; i <= currentYear ; i++) {
       years.push(i);
     }
     return years;

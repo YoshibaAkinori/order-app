@@ -10,8 +10,8 @@ const docClient = DynamoDBDocumentClient.from(client);
 const TABLE_SUFFIXES = ['A', 'B', 'C'];
 const getTableSuffix = (year) => {
     const numericYear = parseInt(year, 10);
-    // 2024年を基準点 'A' とする
-    const startYear = 2024; 
+    // 2024年を基準点 'C' とする
+    const startYear = 2022; 
     const index = (numericYear - startYear) % TABLE_SUFFIXES.length;
     // 基準年より前の場合など、indexが負になるケースを考慮
     const finalIndex = (index + TABLE_SUFFIXES.length) % TABLE_SUFFIXES.length;
