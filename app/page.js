@@ -428,7 +428,7 @@ const handleOpenConfirmation = async () => {
     }
 
     try {
-      const apiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/reception-number?allocation=${allocationNumber}&floor=${customerInfo.floorNumber}`;
+      const apiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/reception-number?allocation=${allocationNumber}&floor=${customerInfo.floorNumber}&year=${selectedYear}`;
       const response = await fetch(apiUrl);
       if (!response.ok) throw new Error('受付番号の取得APIからの応答が異常です');
       const data = await response.json();

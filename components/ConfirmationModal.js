@@ -71,7 +71,14 @@ const ConfirmationModal = ({
                     <div className="conf-grid-item"> <div className="conf-label">お届け先</div> <div className="conf-value">{order.deliveryAddress || '(未入力)'}</div> </div>
                   </div>
                   <table className="conf-items-table">
-                    <thead> <tr> <th>品名</th> <th>単価</th> <th>個数</th> <th>金額</th> </tr> </thead>
+                    <thead>
+                      <tr>
+                        <th>品名</th>
+                        <th>単価</th>
+                        <th>個数</th>
+                        <th>金額</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {order.orderItems.filter(item => item.quantity > 0).flatMap(item => {
                         const netaChangePatterns = order.netaChanges?.[item.productKey] || [];
@@ -157,7 +164,14 @@ const ConfirmationModal = ({
                 <section className="conf-section conf-receipt-details">
                   <h2 className="conf-order-title">領収書・請求書 詳細</h2>
                   <table className="conf-items-table">
-                    <thead><tr><th>種別</th><th>発行日</th><th>宛名</th><th>金額</th></tr></thead>
+                    <thead>
+                      <tr>
+                        <th>品名</th>
+                        <th>単価</th>
+                        <th>個数</th>
+                        <th>金額</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {receipts.map(receipt => {
                         // ★ 修正: 領収書の発行日表示ロジックを両対応に

@@ -23,6 +23,7 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
   const deliveryDates = useMemo(() => (configuration?.deliveryDates || []), [configuration]);
   const deliveryTimes = useMemo(() => (configuration?.deliveryTimes || []), [configuration]);
   const [globalNotes, setGlobalNotes] = useState('');
+
   
 
   const initialCustomerInfo = {
@@ -136,7 +137,20 @@ const handleSearch = async () => {
   try {
     const data = await searchOrderAPI(receptionNumToSearch);
 
-    setCustomerInfo(data.customerInfo);
+    const loadedCustomerInfo = data.customerInfo || {};
+    const sanitizedCustomerInfo = {
+      ...initialCustomerInfo, // まず全ての項目を空文字で初期化
+      ...loadedCustomerInfo,  // 読み込んだデータで上書き
+      contactName: loadedCustomerInfo.contactName || '',
+      email: loadedCustomerInfo.email || '',
+      fax: loadedCustomerInfo.fax || '',
+      tel: loadedCustomerInfo.tel || '',
+      companyName: loadedCustomerInfo.companyName || '',
+      invoiceName: loadedCustomerInfo.invoiceName || '',
+      address: loadedCustomerInfo.address || '',
+      floorNumber: loadedCustomerInfo.floorNumber || '',
+    };
+    setCustomerInfo(sanitizedCustomerInfo);
     setReceptionNumber(data.receptionNumber);
     setAllocationNumber(data.allocationNumber);
 
@@ -205,6 +219,27 @@ setManualReceipts(loadedReceipts);
   } finally {
     setIsLoading(false);
   }
+};
+const handleConfirmClick = () => {
+  // 1. キャンセルされていない有効な注文の合計金額を計算
+  const activeOrders = orders.filter(o => o.orderStatus !== 'CANCELED');
+  const grandTotal = activeOrders.reduce((total, order) => total + calculateOrderTotal(order), 0);
+
+  // 2. 全ての領収書/請求書（finalReceipts）の合計金額を計算
+  const receiptsTotal = finalReceipts.reduce((total, receipt) => total + (parseFloat(receipt.amount) || 0), 0);
+
+  // 3. 金額が一致しない場合のみ、確認メッセージを表示
+  if (grandTotal !== receiptsTotal) {
+    const message = `全注文の合計金額 (¥${grandTotal.toLocaleString()}) と、発行される書類の合計金額 (¥${receiptsTotal.toLocaleString()}) が一致していません。\n\nこのまま更新を続けますか？`;
+    
+    // ユーザーが「キャンセル」を押した場合は、処理を中断
+    if (!window.confirm(message)) {
+      return; 
+    }
+  }
+
+  // 4. 金額が一致している、またはユーザーが確認して「OK」を押した場合、確認モーダルを開く
+  setIsConfirmationOpen(true);
 };
 
 const handleUpdate = async () => {
@@ -434,6 +469,59 @@ const updateOrder = useCallback((orderId, updatedFields) => {
 
   const calculateGrandTotal = useCallback(() => orders.reduce((total, order) => total + calculateOrderTotal(order), 0), [orders, calculateOrderTotal]);
 
+  const orderTotalsJson = useMemo(() => {
+  // 各注文のIDと合計金額をオブジェクトにまとめる
+  const totalsMap = orders.reduce((acc, order) => {
+    // 変更中もユニークな「id」をキーにする
+    acc[order.id] = calculateOrderTotal(order);
+    return acc;
+  }, {});
+  // オブジェクトをJSON文字列に変換する。これにより、金額の変更があった場合のみ値が変わる。
+  return JSON.stringify(totalsMap);
+}, [orders, calculateOrderTotal]);
+
+
+// 2. 監視対象を「orders」から「orderTotalsJson」に変更したuseEffect
+useEffect(() => {
+  if (paymentGroups && paymentGroups.length > 0) {
+    return;
+  }
+  const autoLinkedReceipts = manualReceipts.filter(r => 
+    !r.isAmountManuallyEdited && 
+    !r.isIssueDateManuallyEdited && 
+    r.issueDate
+  );
+  
+  if (autoLinkedReceipts.length === 0) {
+    return; 
+  }
+
+  let hasChanged = false;
+  const nextReceipts = manualReceipts.map(receipt => {
+    if (
+      !receipt.isAmountManuallyEdited && 
+      !receipt.isIssueDateManuallyEdited && 
+      receipt.issueDate
+    ) {
+      const linkedOrder = orders.find(o => (o.orderId || o.id) == receipt.issueDate);
+
+      if (linkedOrder) {
+        const currentOrderTotal = calculateOrderTotal(linkedOrder);
+
+        if (parseFloat(receipt.amount) !== currentOrderTotal) {
+          hasChanged = true;
+          return { ...receipt, amount: currentOrderTotal.toString() }; 
+        }
+      }
+    }
+    return receipt;
+  });
+
+  if (hasChanged) {
+    setManualReceipts(nextReceipts);
+  }
+  // ★ 依存配列の主要な監視対象を orderTotalsJson に変更
+}, [orderTotalsJson, manualReceipts, orders, calculateOrderTotal, setManualReceipts]);
   const handleToggleCombinedPayment = () => {
     const newOpenState = !isCombinedPaymentSummaryOpen;
     setIsCombinedPaymentSummaryOpen(newOpenState);
@@ -967,12 +1055,12 @@ useEffect(() => {
               </button>
               <button 
                 type="button" 
-                onClick={() => setIsConfirmationOpen(true)} 
+                onClick={handleConfirmClick} 
                 className="confirm-btn"
                 disabled={isLoading}
               >
-                この内容で更新を確認
-              </button>
+  この内容で更新を確認
+</button>
             </div>
           </div>
           )}

@@ -75,51 +75,44 @@ const SummaryPage = () => {
             const productMaster = masters.products[productKey];
             if(!productMaster || totalItemQty === 0) return;
 
+            // STEP 1: 全ての注文を、まず「通常注文」として元のネタ構成で集計する
+            // これにより、商品別の列には「変更がなかった場合」の総数が計上される
+            (productMaster.neta || []).forEach(neta => {
+                const netaName = neta.name;
+                const netaQty = neta.quantity || 1;
+                 if(neta_drilldown.hasOwnProperty(netaName)){
+                    neta_drilldown[netaName].breakdown[productKey] += netaQty * totalItemQty;
+                }
+            });
+
+            // STEP 2: ネタ変更があった注文の「差分」だけを changeTotal に反映させる
             const neta_changes_patterns = order.netaChanges?.[productKey] || [];
-            let changed_qty_total = 0;
-            
             neta_changes_patterns.forEach(pattern => {
                 const isTrueNetaChange = Object.keys(pattern.selectedNeta || {}).length > 0;
                 if (isTrueNetaChange) {
                     const pattern_qty = pattern.quantity || 0;
-                    changed_qty_total += pattern_qty;
-                    const originalNetaSet = new Set((productMaster.neta || []).map(n => n.name));
                     const removedNetaSet = new Set(Object.keys(pattern.selectedNeta || {}));
-                    const addedNeta = pattern.to_neta || [];
-                    const finalNetaSet = new Set(originalNetaSet);
-                    removedNetaSet.forEach(neta => finalNetaSet.delete(neta));
-                    addedNeta.forEach(neta => finalNetaSet.add(neta));
+                    const addedNeta = pattern.to_neta || []; // TODO: addedNetaの構造に注意
 
-                    finalNetaSet.forEach(netaName => {
-                        if(neta_drilldown.hasOwnProperty(netaName)){
-                            const netaInfo = (productMaster.neta || []).find(n => n.name === netaName);
-                            const netaBaseQty = netaInfo ? (netaInfo.quantity || 1) : 1;
-                            neta_drilldown[netaName].breakdown[productKey] += netaBaseQty * pattern_qty;
-                        }
-                    });
+                    // 「変更前のネタ」をマイナスとして計上
                     removedNetaSet.forEach(netaName => {
                         if(neta_drilldown.hasOwnProperty(netaName)){
-                            neta_drilldown[netaName].changeTotal -= pattern_qty;
+                            // マスターから、そのネタの基本数量を取得
+                            const netaInfo = (productMaster.neta || []).find(n => n.name === netaName);
+                            const netaBaseQty = netaInfo ? (netaInfo.quantity || 1) : 1;
+                            neta_drilldown[netaName].changeTotal -= netaBaseQty * pattern_qty;
                         }
                     });
+
+                    // 「変更後のネタ」をプラスとして計上
                     addedNeta.forEach(netaName => {
                         if(neta_drilldown.hasOwnProperty(netaName)){
-                            neta_drilldown[netaName].changeTotal += pattern_qty;
+                            // 変更で追加されるネタは、基本数量1として仮定
+                            neta_drilldown[netaName].changeTotal += 1 * pattern_qty;
                         }
                     });
                 }
             });
-
-            const normal_qty = totalItemQty - changed_qty_total;
-            if (normal_qty > 0) {
-                (productMaster.neta || []).forEach(neta => {
-                    const netaName = neta.name;
-                    const netaQty = neta.quantity || 1;
-                     if(neta_drilldown.hasOwnProperty(netaName)){
-                        neta_drilldown[netaName].breakdown[productKey] += netaQty * normal_qty;
-                    }
-                });
-            }
         });
     });
     

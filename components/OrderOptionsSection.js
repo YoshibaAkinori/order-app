@@ -118,11 +118,11 @@ const OrderOptionsSection = ({
                               <div className="wasabi-options">
                                 <div className="wasabi-option">
                                   <input type="radio" id={`wasabi-ari-${pattern.id}`} name={`wasabi-option-${pattern.id}`} value="あり" checked={pattern.wasabi === 'あり'} onChange={(e) => handleNetaChangeDetail(product.productKey, pattern.id, 'wasabi', e.target.value)} className="wasabi-radio" />
-                                  <label htmlFor={`wasabi-ari-${pattern.id}`} className="wasabi-label">あり</label>
+                                  <label htmlFor={`wasabi-ari-${pattern.id}`} className="wasabi-label">サビ入り</label>
                                 </div>
                                 <div className="wasabi-option">
                                   <input type="radio" id={`wasabi-nuki-${pattern.id}`} name={`wasabi-option-${pattern.id}`} value="抜き" checked={pattern.wasabi === '抜き'} onChange={(e) => handleNetaChangeDetail(product.productKey, pattern.id, 'wasabi', e.target.value)} className="wasabi-radio" />
-                                  <label htmlFor={`wasabi-nuki-${pattern.id}`} className="wasabi-label">抜き</label>
+                                  <label htmlFor={`wasabi-nuki-${pattern.id}`} className="wasabi-label">サビ抜き</label>
                                 </div>
                               </div>
                               <div className="ori-option">
