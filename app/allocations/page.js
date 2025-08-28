@@ -73,7 +73,7 @@ const AllocationPage = () => {
     setError(null);
     try {
       const formattedDate = date.replaceAll('/', '-');
-      const fetchedOrders = await getOrdersByDate(formattedDate);
+      const fetchedOrders = await getOrdersByDate(formattedDate,selectedYear);
       setOrders(fetchedOrders);
     } catch (err) {
       setError(err.message);
@@ -193,7 +193,7 @@ const AllocationPage = () => {
 
     try {
       const formattedDate = selectedDate.replaceAll('/', '-');
-      const result = await updateAllocations(formattedDate, assignments);
+      const result = await updateAllocations(formattedDate, assignments,selectedYear);
       alert(result.message);
     } catch (err) {
       alert(`エラー: ${err.message}`);
@@ -210,7 +210,7 @@ const AllocationPage = () => {
     <div style={{ padding: '2rem' }}>
       <h1 className="admin-header">割り当て管理 ({selectedYear}年)</h1>
       
-      <div className="admin-controls-container">
+      <div className="summary-controls">
         <div>
           <label>配達日を選択: </label>
           <select value={selectedDate} onChange={handleDateChange}>

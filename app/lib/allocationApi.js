@@ -1,23 +1,38 @@
-// lib/allocationApi.js (新規作成)
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-export const getOrdersByDate = async (date) => {
-  const response = await fetch(`${BASE_URL}/orders-by-date/${date}`);
-  if (!response.ok) {
-    throw new Error('指定された日付の注文取得に失敗しました。');
+// ★★★ 共通リクエスト関数を追加（安定性のため） ★★★
+const request = async (endpoint, options = {}) => {
+  const url = `${BASE_URL}/${endpoint}`;
+  const config = {
+    method: options.method || 'GET',
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
+  };
+  if (options.body) {
+    config.body = JSON.stringify(options.body);
   }
-  return await response.json();
+  const response = await fetch(url, config);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'APIリクエストに失敗しました。');
+  }
+  return response.json();
 };
 
-// ★ この関数を追加
-export const updateAllocations = async (date, assignments) => {
-  const response = await fetch(`${BASE_URL}/orders-by-date/${date}`, {
+// ★★★ getOrdersByDate を修正 ★★★
+export const getOrdersByDate = async (date, year) => {
+  if (!date || !year) throw new Error('日付と年を指定してください。');
+  // URLSearchParams を使って安全にパラメータを付与
+  const params = new URLSearchParams({ year });
+  return request(`orders-by-date/${date}?${params.toString()}`);
+};
+
+// ★★★ updateAllocations を修正 ★★★
+export const updateAllocations = async (date, assignments, year) => {
+  if (!date || !year) throw new Error('日付と年を指定してください。');
+  const params = new URLSearchParams({ year });
+  return request(`orders-by-date/${date}?${params.toString()}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(assignments),
+    body: assignments,
   });
-  if (!response.ok) {
-    throw new Error('割り当ての更新に失敗しました。');
-  }
-  return await response.json();
 };

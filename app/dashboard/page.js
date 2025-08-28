@@ -150,7 +150,7 @@ const OrderListPage = () => {
     setSelectedRoute('');
 
     try {
-      const data = await searchOrders(selectedDate, '', selectedYear); 
+      const data = await searchOrders(selectedDate, selectedYear); 
       setApiData(data);
     } catch (err) { setError(err.message); setApiData(null); }
     finally { setIsLoading(false); }

@@ -64,19 +64,25 @@ const NetaChangeAdminPage = () => {
     <div style={{ padding: '2rem' }}>
       <h1 className="admin-header">ネタ変更 管理</h1>
       
-      <div className="summary-controls" style={{ marginBottom: '2rem' }}>
-        <label>集計日:</label>
-        <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}>
-          <option value="">日付選択</option>
-          {deliveryDates.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <label>割り振り先:</label>
-        <select value={selectedRoute} onChange={(e) => setSelectedRoute(e.target.value)}>
-          <option value="">担当選択</option>
-          {deliveryWariate.map(w => <option key={w.name} value={w.name}>{w.name}</option>)}
-        </select>
+      <div className="summary-controls">
+        <div className="control-group">
+          <label>集計日:</label>
+          <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}>
+            <option value="">日付選択</option>
+            {deliveryDates.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+  
+        <div className="control-group">
+          <label>割り振り先:</label>
+          <select value={selectedRoute} onChange={(e) => setSelectedRoute(e.target.value)}>
+            <option value="">担当選択</option>
+              {deliveryWariate.map(w => <option key={w.name} value={w.name}>{w.name}</option>)}
+          </select>
+        </div>
+  
         <button onClick={handleFetch} disabled={isLoading}>
-          {isLoading ? '読込中...' : '表示'}
+           {isLoading ? '読込中...' : '表示'}
         </button>
       </div>
 
