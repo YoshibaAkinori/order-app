@@ -1,9 +1,23 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, DeleteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { v4 as uuidv4 } from 'uuid'; // ★★★ uuidライブラリをインポート ★★★
+import { v4 as uuidv4 } from 'uuid';
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
+
+// ★★★ ここからが変更点 ★★★
+// テーブル名を動的に解決するためのヘルパー関数
+const TABLE_SUFFIXES = ['A', 'B', 'C'];
+const getTableSuffix = (year) => {
+    const numericYear = parseInt(year, 10);
+    // 2024年を基準点 'C' とする (2024 % 3 = 0 にならないため、基準年からの差分で計算)
+    const startYear = 2022; 
+    const index = (numericYear - startYear) % TABLE_SUFFIXES.length;
+    // 基準年より前の場合など、indexが負になるケースを考慮
+    const finalIndex = (index + TABLE_SUFFIXES.length) % TABLE_SUFFIXES.length;
+    return TABLE_SUFFIXES[finalIndex];
+};
+// ★★★ 変更ここまで ★★★
 
 // --- ユーティリティ関数 (変更なし) ---
 const sanitizeData = (data) => {
@@ -40,18 +54,22 @@ export const handler = async (event) => {
     const httpMethod = event.requestContext?.http?.method || event.httpMethod;
     const path = event.requestContext?.http?.path || event.path;
     if (!path) { throw new Error("リクエストパスを特定できませんでした。"); }
+    
+    // ★★★ 変更点: bodyから年を取得 ★★★
+    const body = event.body ? JSON.parse(event.body) : {};
+    const year = body.selectedYear;
 
     const allCancelMatch = path.match(/^\/orders\/([^\/]+)\/cancel$/);
     if (httpMethod === 'POST' && allCancelMatch) {
       const [, receptionNumber] = allCancelMatch;
-      return await handleCancelAll(receptionNumber);
+      // ★★★ handleCancelAllに年を渡す ★★★
+      return await handleCancelAll(receptionNumber, year);
     }
 
     const updateMatch = path.match(/^\/orders\/([^\/]+)$/);
     if (httpMethod === 'PUT' && updateMatch) {
       if (!event.body) { throw new Error("更新リクエストにはbodyが必要です。"); }
-      const data = JSON.parse(event.body);
-      return await handleUpdateOrder(data);
+      return await handleUpdateOrder(body);
     }
     
     throw new Error(`未対応のルートまたはメソッドです: ${httpMethod} ${path}`);
@@ -65,19 +83,29 @@ export const handler = async (event) => {
 // =============================================================
 // 受付全体のキャンセル処理
 // =============================================================
-const handleCancelAll = async (receptionNumber) => {
+// ★★★ 引数にyearを追加 ★★★
+const handleCancelAll = async (receptionNumber, year) => {
+  if (!year) {
+    throw new Error("キャンセル処理には年度(year)の指定が必要です。");
+  }
+  // ★★★ 変更点: テーブル名を動的に生成 ★★★
+  const tableSuffix = getTableSuffix(year);
+  const ORDERS_TABLE = `Orders-${tableSuffix}`;
+  const ORDER_DETAILS_TABLE = `OrderDetails-${tableSuffix}`;
+  const ORDER_LOG_TABLE = `OrderChangeLogs-${tableSuffix}`;
+
   const { Items: allDetails } = await docClient.send(new QueryCommand({
-    TableName: "OrderDetails", KeyConditionExpression: "receptionNumber = :rn", ExpressionAttributeValues: { ":rn": receptionNumber },
+    TableName: ORDER_DETAILS_TABLE, KeyConditionExpression: "receptionNumber = :rn", ExpressionAttributeValues: { ":rn": receptionNumber },
   }));
-  const { Item: orderHeader } = await docClient.send(new GetCommand({ TableName: "Orders", Key: { receptionNumber } }));
+  const { Item: orderHeader } = await docClient.send(new GetCommand({ TableName: ORDERS_TABLE, Key: { receptionNumber } }));
 
   if (allDetails && allDetails.length > 0) {
-    const deletePromises = allDetails.map(item => docClient.send(new DeleteCommand({ TableName: "OrderDetails", Key: { receptionNumber: item.receptionNumber, orderId: item.orderId } })));
+    const deletePromises = allDetails.map(item => docClient.send(new DeleteCommand({ TableName: ORDER_DETAILS_TABLE, Key: { receptionNumber: item.receptionNumber, orderId: item.orderId } })));
     await Promise.all(deletePromises);
   }
 
   await docClient.send(new UpdateCommand({
-    TableName: "Orders", Key: { receptionNumber }, UpdateExpression: "SET orderStatus = :status, updatedAt = :ts", ExpressionAttributeValues: { ":status": "CANCELED", ":ts": new Date().toISOString() }
+    TableName: ORDERS_TABLE, Key: { receptionNumber }, UpdateExpression: "SET orderStatus = :status, updatedAt = :ts", ExpressionAttributeValues: { ":status": "CANCELED", ":ts": new Date().toISOString() }
   }));
   
   const logItem = {
@@ -86,14 +114,14 @@ const handleCancelAll = async (receptionNumber) => {
     receptionNumber: receptionNumber,
     action: "CANCEL_ALL",
     canceledOrders: (allDetails || []).map(detail => ({
-      internalId: detail.internalId, // ★★★ 追加: ログにもIDを含める ★★★
+      internalId: detail.internalId,
       注文番号: detail.orderId,
       部署名: orderHeader?.customerInfo?.department || 'N/A',
       お届け日時: `${detail.deliveryDate || ''} ${detail.deliveryTime || ''}`.trim(),
       注文内容: (detail.orderItems || []).filter(item => (item.quantity || 0) > 0).map(item => `${item.name}(${item.quantity})`).join(', ')
     }))
   };
-  await docClient.send(new PutCommand({ TableName: "OrderChangeLogs", Item: logItem }));
+  await docClient.send(new PutCommand({ TableName: ORDER_LOG_TABLE, Item: logItem }));
 
   return { statusCode: 200, headers: { "Access-Control-Allow-Origin": "*"}, body: JSON.stringify({ message: "注文が正常にキャンセルされました" }) };
 };
@@ -107,20 +135,24 @@ const handleUpdateOrder = async (data) => {
     selectedYear, customer, orders, receptionNumber, allocationNumber, 
     paymentGroups, receipts, orderType, globalNotes
   } = finalData;
+
+  if (!selectedYear) {
+    throw new Error("更新処理には年度(selectedYear)の指定が必要です。");
+  }
+  // ★★★ 変更点: テーブル名を動的に生成 ★★★
+  const tableSuffix = getTableSuffix(selectedYear);
+  const ORDERS_TABLE = `Orders-${tableSuffix}`;
+  const ORDER_DETAILS_TABLE = `OrderDetails-${tableSuffix}`;
+  const ORDER_LOG_TABLE = `OrderChangeLogs-${tableSuffix}`;
   
-  // ★★★ ここから修正 ★★★
-  // フロントエンドから送られてきた各注文をチェック
   orders.forEach(order => {
-    // もし internalId がなければ、それはこの更新で新規追加された注文
     if (!order.internalId) {
-      // 新しいIDを生成して付与
       order.internalId = uuidv4();
     }
   });
-  // ★★★ 修正ここまで ★★★
 
-  const { Item: oldOrderHeader } = await docClient.send(new GetCommand({ TableName: "Orders", Key: { receptionNumber: receptionNumber }}));
-  const { Items: oldOrderDetails } = await docClient.send(new QueryCommand({ TableName: "OrderDetails", KeyConditionExpression: "receptionNumber = :rn", ExpressionAttributeValues: { ":rn": receptionNumber }}));
+  const { Item: oldOrderHeader } = await docClient.send(new GetCommand({ TableName: ORDERS_TABLE, Key: { receptionNumber: receptionNumber }}));
+  const { Items: oldOrderDetails } = await docClient.send(new QueryCommand({ TableName: ORDER_DETAILS_TABLE, KeyConditionExpression: "receptionNumber = :rn", ExpressionAttributeValues: { ":rn": receptionNumber }}));
   const beforeData = { ...oldOrderHeader, orders: oldOrderDetails };
 
   const { Item: currentConfig } = await docClient.send(new GetCommand({ TableName: "Configurations", Key: { configYear: selectedYear }}));
@@ -145,17 +177,17 @@ const handleUpdateOrder = async (data) => {
   const logItem = {
     logId: `${receptionNumber}-${timestamp}`, timestamp, receptionNumber, beforeData, afterData: processedNewData,
   };
-  await docClient.send(new PutCommand({ TableName: "OrderChangeLogs", Item: logItem }));
+  await docClient.send(new PutCommand({ TableName: ORDER_LOG_TABLE, Item: logItem }));
 
   const grandTotal = calculateGrandTotal(activeOrdersOnly, sideMenusMaster);
   const orderHeaderItem = {
     receptionNumber, allocationNumber, customerInfo: customer, paymentGroups: transformedPaymentGroups, receipts, grandTotal,
     submittedAt: timestamp, orderType: orderType || '変更', orderStatus: 'ACTIVE', selectedYear, globalNotes: globalNotes || null,
   };
-  await docClient.send(new PutCommand({ TableName: "Orders", Item: orderHeaderItem }));
+  await docClient.send(new PutCommand({ TableName: ORDERS_TABLE, Item: orderHeaderItem }));
 
   if (oldOrderDetails && oldOrderDetails.length > 0) {
-    const deletePromises = oldOrderDetails.map(item => docClient.send(new DeleteCommand({ TableName: "OrderDetails", Key: { receptionNumber: item.receptionNumber, orderId: item.orderId }})));
+    const deletePromises = oldOrderDetails.map(item => docClient.send(new DeleteCommand({ TableName: ORDER_DETAILS_TABLE, Key: { receptionNumber: item.receptionNumber, orderId: item.orderId }})));
     await Promise.all(deletePromises);
   }
 
@@ -163,7 +195,7 @@ const handleUpdateOrder = async (data) => {
     const orderDetailItem = {
       receptionNumber,
       orderId: order.orderId,
-      internalId: order.internalId, // ★★★ 追加: internalIdを必ず含める ★★★
+      internalId: order.internalId,
       sequence: order.sequence || index + 1,
       deliveryDate: order.orderDate,
       deliveryTime: order.orderTime,
@@ -176,7 +208,7 @@ const handleUpdateOrder = async (data) => {
       orderStatus: 'ACTIVE',
       orderTotal: calculateOrderTotal(order, sideMenusMaster),
     };
-    await docClient.send(new PutCommand({ TableName: "OrderDetails", Item: orderDetailItem }));
+    await docClient.send(new PutCommand({ TableName: ORDER_DETAILS_TABLE, Item: orderDetailItem }));
   }));
 
   return {

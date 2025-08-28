@@ -6,16 +6,26 @@ import unicodedata
 
 # --- 初期設定 ---
 dynamodb = boto3.resource('dynamodb')
-orders_table = dynamodb.Table('Orders')
-order_details_table = dynamodb.Table('OrderDetails')
 config_table = dynamodb.Table('Configurations')
+
+# ★★★ ここからが変更点 ★★★
+# テーブル名を動的に解決するためのヘルパー関数
+TABLE_SUFFIXES = ['A', 'B', 'C']
+def get_table_suffix(year):
+    """年を元に、使用するテーブルのサフィックス(A, B, C)を決定する"""
+    numeric_year = int(year)
+    # 2024年を基準点 'C' とする
+    start_year = 2022
+    index = (numeric_year - start_year) % len(TABLE_SUFFIXES)
+    return TABLE_SUFFIXES[index]
+# ★★★ 変更ここまで ★★★
+
 
 def normalize_text(text):
     if not text:
         return ''
     return unicodedata.normalize('NFKC', text).strip()
 
-# --- Decimalを再帰的に変換 ---
 def convert_decimals(obj):
     if isinstance(obj, list):
         return [convert_decimals(i) for i in obj]
@@ -32,6 +42,15 @@ def lambda_handler(event, context):
         date_str = params.get('date')
         config_year = params.get('year')
 
+        if not date_str or not config_year:
+            return {'statusCode': 400, 'body': json.dumps({'message': 'Date and Year parameters are required.'})}
+
+        # ★★★ 変更点: テーブル名を動的に生成 ★★★
+        table_suffix = get_table_suffix(config_year)
+        orders_table = dynamodb.Table(f'Orders-{table_suffix}')
+        order_details_table = dynamodb.Table(f'OrderDetails-{table_suffix}')
+        # ★★★ 変更ここまで ★★★
+
         encoded_route = params.get('route')
         target_route = urllib.parse.unquote(encoded_route) if encoded_route else None
         normalized_route = normalize_text(target_route) if target_route else None
@@ -39,9 +58,6 @@ def lambda_handler(event, context):
         print(f"[DEBUG] Raw route param: {encoded_route}")
         print(f"[DEBUG] Decoded route: {target_route}")
         print(f"[DEBUG] Normalized route: {normalized_route}")
-
-        if not date_str or not config_year:
-            return {'statusCode': 400, 'body': json.dumps({'message': 'Date and Year parameters are required.'})}
 
         day_to_find = date_str.split('-')[2]
 
@@ -79,18 +95,16 @@ def lambda_handler(event, context):
         reception_numbers = {item['receptionNumber'] for item in details if 'receptionNumber' in item}
         parents_data = {}
         if reception_numbers:
-            batch_keys = {'Orders': {'Keys': [{'receptionNumber': rn} for rn in reception_numbers]}}
+            # ★★★ 変更点: 動的なテーブル名を使用 ★★★
+            batch_keys = {orders_table.name: {'Keys': [{'receptionNumber': rn} for rn in reception_numbers]}}
             parent_response = dynamodb.batch_get_item(RequestItems=batch_keys)
-            parents_data = {item['receptionNumber']: item for item in parent_response['Responses']['Orders']}
+            parents_data = {item['receptionNumber']: item for item in parent_response['Responses'][orders_table.name]}
 
         # --- 結合 ---
         combined_orders = []
         for detail in details:
             parent = parents_data.get(detail.get('receptionNumber'), {})
             customer_info = parent.get('customerInfo', {})
-
-            receipt_type = parent.get('receipts', [{}])[0].get('documentType', '')
-            recipient_name = parent.get('receipts', [{}])[0].get('recipientName', '')
 
             enriched_order_items = []
             for item in detail.get('orderItems', []):

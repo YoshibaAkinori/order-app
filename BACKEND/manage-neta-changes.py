@@ -4,8 +4,20 @@ from decimal import Decimal
 
 # --- 初期設定 ---
 dynamodb = boto3.resource('dynamodb')
-order_details_table = dynamodb.Table('OrderDetails')
 config_table = dynamodb.Table('Configurations')
+
+# ★★★ ここからが変更点 ★★★
+# テーブル名を動的に解決するためのヘルパー関数
+TABLE_SUFFIXES = ['A', 'B', 'C']
+def get_table_suffix(year):
+    """年を元に、使用するテーブルのサフィックス(A, B, C)を決定する"""
+    numeric_year = int(year)
+    # 2024年を基準点 'C' とする
+    start_year = 2022
+    index = (numeric_year - start_year) % len(TABLE_SUFFIXES)
+    return TABLE_SUFFIXES[index]
+# ★★★ 変更ここまで ★★★
+
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -20,17 +32,22 @@ def lambda_handler(event, context):
     
     print(f"Received request: Method={method}, Path={path}")
 
-    # --- GET /neta-changes?date=...&route=... ---
+    # --- GET /neta-changes?date=...&route=...&year=... ---
     if method == 'GET' and path == '/neta-changes':
         try:
             params = event.get('queryStringParameters', {})
             date_str = params.get('date')
             target_route = params.get('route')
-            if not date_str or not target_route:
-                return {'statusCode': 400, 'body': json.dumps({'message': 'Date and route parameters are required.'})}
+            year_to_find = params.get('year') # ★★★ 年を取得 ★★★
             
+            if not date_str or not target_route or not year_to_find:
+                return {'statusCode': 400, 'body': json.dumps({'message': 'Date, route, and year parameters are required.'})}
+            
+            # ★★★ 変更点: テーブル名を動的に生成 ★★★
+            table_suffix = get_table_suffix(year_to_find)
+            order_details_table = dynamodb.Table(f'OrderDetails-{table_suffix}')
+
             day_to_find = date_str.split('-')[2]
-            year_to_find = date_str.split('-')[0]
             
             config_response = config_table.get_item(Key={'configYear': year_to_find})
             if 'Item' not in config_response:
@@ -51,7 +68,6 @@ def lambda_handler(event, context):
             )
             all_orders = details_response.get('Items', [])
             
-            # ★★★ ここからが修正されたロジック ★★★
             orders_with_structural_changes = []
             for order in all_orders:
                 neta_changes = order.get('netaChanges', {})
@@ -59,7 +75,6 @@ def lambda_handler(event, context):
                 if neta_changes:
                     for product_key, patterns in neta_changes.items():
                         for pattern in patterns:
-                            # selectedNetaが存在し、かつ空のオブジェクトではないことを確認
                             if pattern.get('selectedNeta') and len(pattern.get('selectedNeta', {}).keys()) > 0:
                                 has_structural_change = True
                                 break
@@ -68,7 +83,6 @@ def lambda_handler(event, context):
                 
                 if has_structural_change:
                     orders_with_structural_changes.append(order)
-            # ★★★ ここまで ★★★
 
             return {'statusCode': 200, 'headers': { 'Access-Control-Allow-Origin': '*' }, 'body': json.dumps(orders_with_structural_changes, cls=DecimalEncoder)}
 
@@ -85,9 +99,14 @@ def lambda_handler(event, context):
             
             request_body = json.loads(event.get('body', '{}'))
             new_neta_changes = request_body.get('netaChanges')
-            
-            if new_neta_changes is None:
-                return {'statusCode': 400, 'body': json.dumps({'message': 'netaChanges is required.'})}
+            year = request_body.get('year') # ★★★ 年をリクエストボディから取得 ★★★
+
+            if new_neta_changes is None or not year:
+                return {'statusCode': 400, 'body': json.dumps({'message': 'netaChanges and year are required.'})}
+
+            # ★★★ 変更点: テーブル名を動的に生成 ★★★
+            table_suffix = get_table_suffix(year)
+            order_details_table = dynamodb.Table(f'OrderDetails-{table_suffix}')
 
             order_details_table.update_item(
                 Key={'receptionNumber': reception_number, 'orderId': order_id},

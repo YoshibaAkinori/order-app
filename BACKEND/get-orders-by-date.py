@@ -3,7 +3,19 @@ import boto3
 from decimal import Decimal
 
 dynamodb = boto3.resource('dynamodb')
-order_details_table = dynamodb.Table('OrderDetails')
+
+# ★★★ ここからが変更点 ★★★
+# テーブル名を動的に解決するためのヘルパー関数
+TABLE_SUFFIXES = ['A', 'B', 'C']
+def get_table_suffix(year):
+    """年を元に、使用するテーブルのサフィックス(A, B, C)を決定する"""
+    numeric_year = int(year)
+    # 2024年を基準点 'A' とする
+    start_year = 2022
+    index = (numeric_year - start_year) % len(TABLE_SUFFIXES)
+    return TABLE_SUFFIXES[index]
+# ★★★ 変更ここまで ★★★
+
 
 # Decimal型をJSONに変換するためのヘルパー
 class DecimalEncoder(json.JSONEncoder):
@@ -15,13 +27,19 @@ class DecimalEncoder(json.JSONEncoder):
 def lambda_handler(event, context):
     try:
         date_str = event.get('pathParameters', {}).get('date')
-        if not date_str:
-            return {'statusCode': 400, 'body': json.dumps({'message': 'Date parameter is required.'})}
+        # ★★★ 変更点: クエリパラメータから年を取得 ★★★
+        year = event.get('queryStringParameters', {}).get('year')
+
+        if not date_str or not year:
+            return {'statusCode': 400, 'body': json.dumps({'message': 'Date and Year parameters are required.'})}
         
-        # URLの日付 'YYYY-MM-DD' から 'DD' (日) の部分だけを抜き出す
+        # ★★★ 変更点: テーブル名を動的に生成 ★★★
+        table_suffix = get_table_suffix(year)
+        order_details_table = dynamodb.Table(f'OrderDetails-{table_suffix}')
+
         day_to_find = date_str.split('-')[2]
 
-        # Scanで全件取得 (注意: データ量が多い場合は非効率)
+        # Scanで全件取得
         response = order_details_table.scan()
         all_orders = response.get('Items', [])
         

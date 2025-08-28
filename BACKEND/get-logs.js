@@ -7,6 +7,17 @@ const { diff } = deepDiff;
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
+const TABLE_SUFFIXES = ['A', 'B', 'C'];
+const getTableSuffix = (year) => {
+    const numericYear = parseInt(year, 10);
+    // 2024年を基準点 'A' とする
+    const startYear = 2024; 
+    const index = (numericYear - startYear) % TABLE_SUFFIXES.length;
+    // 基準年より前の場合など、indexが負になるケースを考慮
+    const finalIndex = (index + TABLE_SUFFIXES.length) % TABLE_SUFFIXES.length;
+    return TABLE_SUFFIXES[finalIndex];
+};
+
 const LOGS_TABLE_NAME = process.env.LOGS_TABLE_NAME || "OrderChangeLogs";
 const CONFIG_TABLE_NAME = process.env.CONFIG_TABLE_NAME || "Configurations";
 
@@ -284,6 +295,17 @@ export const handler = async (event) => {
   console.log('Lambda実行開始:', JSON.stringify(event));
   
   try {
+    const year = event.queryStringParameters?.year;
+    if (!year) {
+        return {
+            statusCode: 400,
+            headers: { "Access-Control-Allow-Origin": "*" },
+            body: JSON.stringify({ success: false, message: "年度(year)が指定されていません。" })
+        };
+    }
+    const tableSuffix = getTableSuffix(year);
+    const LOGS_TABLE_NAME = `OrderChangeLogs-${tableSuffix}`;
+    
     const logsScanResult = await docClient.send(new ScanCommand({
       TableName: LOGS_TABLE_NAME
     }));

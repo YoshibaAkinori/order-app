@@ -1,41 +1,40 @@
 "use client";
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import LogEntry from '../../components/LogEntry';
 import { useConfiguration } from '../contexts/ConfigurationContext';
 
 const ChangeLogPage = () => {
-  const [logs, setLogs] = useState([]); // 初期値は空配列
+  const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { configuration, selectedYear, changeYear } = useConfiguration();
-  const ALLOCATION_MASTER = useMemo(() => (configuration?.allocationMaster || {}), [configuration]);
-
-  // handleAllocationChange 関数を定義（エラー回避用）
-  const handleAllocationChange = (value) => {
-    // 必要に応じて実装
-    console.log('Allocation changed:', value);
-  };
+  // ★★★ 変更点: selectedYear を useConfiguration から取得 ★★★
+  const { selectedYear } = useConfiguration();
 
   useEffect(() => {
     const fetchLogs = async () => {
+      // ★★★ 変更点: selectedYear がないとAPIを呼ばないようにする ★★★
+      if (!selectedYear) {
+        setIsLoading(false);
+        setLogs([]);
+        return;
+      }
+
       setIsLoading(true);
-      setError(null); // エラーをリセット
+      setError(null);
       
       try {
-        const response = await fetch('https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/Logs');
+        // ★★★ 変更点: APIのURLに year クエリパラメータを追加 ★★★
+        const response = await fetch(`https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/Logs?year=${selectedYear}`);
         
         if (!response.ok) {
           throw new Error(`データの取得に失敗しました。ステータス: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('受信したデータ:', data); // デバッグ用
         
-        // Lambda関数のレスポンス形式に応じて処理
         if (data && data.success && Array.isArray(data.logs)) {
           setLogs(data.logs);
         } else if (Array.isArray(data)) {
-          // 直接配列が返された場合
           setLogs(data);
         } else {
           console.error('予期しないデータ形式:', data);
@@ -53,14 +52,14 @@ const ChangeLogPage = () => {
     };
 
     fetchLogs();
-  }, []);
+  }, [selectedYear]); // ★★★ 変更点: selectedYear を依存配列に追加 ★★★
 
   return (
     <div className="main-container">
       <div className="main-content">
         <div className="form-container">
           <div className="form-header">
-            <h1 className="form-title">変更履歴</h1>
+            <h1 className="form-title">変更履歴 ({selectedYear}年)</h1>
           </div>
           
           {isLoading && (
@@ -74,15 +73,21 @@ const ChangeLogPage = () => {
               <p>エラー: {error}</p>
             </div>
           )}
+
+          {!isLoading && !error && !selectedYear && (
+            <div className="no-logs-message">
+                <p>表示する年度を選択してください。</p>
+            </div>
+          )}
           
           <div className="log-message">
-            {!isLoading && !error && Array.isArray(logs) && logs.length > 0 && 
+            {!isLoading && !error && selectedYear && Array.isArray(logs) && logs.length > 0 && 
               logs.map(log => (
                 <LogEntry key={log.logId} log={log} />
               ))
             }
             
-            {!isLoading && !error && (!logs || logs.length === 0) && (
+            {!isLoading && !error && selectedYear && (!logs || logs.length === 0) && (
               <div className="no-logs-message">
                 <p>変更履歴はありません。</p>
               </div>

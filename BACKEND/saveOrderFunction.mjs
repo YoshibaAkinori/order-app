@@ -38,6 +38,17 @@ const calculateGrandTotal = (orders, sideMenusMaster) => {
   return orders.reduce((total, order) => total + calculateOrderTotal(order, sideMenusMaster), 0);
 };
 
+const TABLE_SUFFIXES = ['A', 'B', 'C'];
+const getTableSuffix = (year) => {
+    const numericYear = parseInt(year, 10);
+    // 2024年を基準点 'C' とする
+    const startYear = 2022; 
+    const index = (numericYear - startYear) % TABLE_SUFFIXES.length;
+    // 負の数になった場合のための調整
+    const finalIndex = (index + TABLE_SUFFIXES.length) % TABLE_SUFFIXES.length;
+    return TABLE_SUFFIXES[finalIndex];
+};
+
 
 export const handler = async (event) => {
   try {
@@ -71,6 +82,10 @@ export const handler = async (event) => {
     }
     const sideMenusMaster = currentConfig.specialMenus;
 
+    const tableSuffix = getTableSuffix(selectedYear);
+    const ORDERS_TABLE = `Orders-${tableSuffix}`;
+    const ORDER_DETAILS_TABLE = `OrderDetails-${tableSuffix}`;
+
     const orderIdMap = {};
     orders.forEach(order => {
       orderIdMap[order.id] = order.orderId;
@@ -97,7 +112,7 @@ export const handler = async (event) => {
       selectedYear: selectedYear,
       globalNotes: globalNotes || null,
     };
-    await docClient.send(new PutCommand({ TableName: "Orders", Item: orderHeaderItem }));
+    await docClient.send(new PutCommand({ TableName: ORDERS_TABLE, Item: orderHeaderItem }));
 
     await Promise.all(orders.map(async (order, index) => {
       const orderDetailItem = {
@@ -115,7 +130,7 @@ export const handler = async (event) => {
         isSameAddress: order.isSameAddress,
         orderTotal: calculateOrderTotal(order, sideMenusMaster),
       };
-      await docClient.send(new PutCommand({ TableName: "OrderDetails", Item: orderDetailItem }));
+      await docClient.send(new PutCommand({ TableName: ORDER_DETAILS_TABLE, Item: orderDetailItem }));
     }));
 
     return {

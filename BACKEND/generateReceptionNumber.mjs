@@ -5,7 +5,22 @@ const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-// アルファベットのサフィックスをインクリメントするヘルパー関数 (例: Z -> AA, AZ -> BA)
+// ★★★ ここからが変更点 ★★★
+// テーブル名を動的に解決するためのヘルパー関数
+const TABLE_SUFFIXES = ['A', 'B', 'C'];
+const getTableSuffix = (year) => {
+    const numericYear = parseInt(year, 10);
+    // 2024年を基準点 'C' とする
+    const startYear = 2022; 
+    const index = (numericYear - startYear) % TABLE_SUFFIXES.length;
+    // 基準年より前の場合など、indexが負になるケースを考慮
+    const finalIndex = (index + TABLE_SUFFIXES.length) % TABLE_SUFFIXES.length;
+    return TABLE_SUFFIXES[finalIndex];
+};
+// ★★★ 変更ここまで ★★★
+
+
+// アルファベットのサフィックスをインクリメントするヘルパー関数 (変更なし)
 const incrementSuffix = (suffix) => {
   if (!suffix) return 'A';
   const chars = suffix.split('');
@@ -33,20 +48,21 @@ export const handler = async (event) => {
     };
   }
 
+  // ★★★ 変更点: テーブル名を動的に生成 ★★★
+  const tableSuffix = getTableSuffix(year);
+  const ORDERS_TABLE = `Orders-${tableSuffix}`;
+
   let newReceptionNumber = '';
 
   try {
     const configCommand = new GetCommand({
-      TableName: "Configurations", // ★設定テーブル名
+      TableName: "Configurations",
       Key: { configYear: year },
     });
     const { Item: config } = await docClient.send(configCommand);
     const allocationMaster = config?.allocationMaster || {};
 
-    // ### ▼▼▼ 変更箇所 ▼▼▼ ###
-    // ルールを決定する条件を反転
     let useFloorIncrementRule = false;
-    // 階数が0で、かつ割振記号のaddressが「その他」で"ある"場合のみtrue
     if (
       parseInt(floor, 10) === 0 &&
       allocationMaster[allocation] &&
@@ -54,18 +70,15 @@ export const handler = async (event) => {
     ) {
       useFloorIncrementRule = true;
     }
-    // ### ▲▲▲ 変更箇所 ▲▲▲ ###
 
     if (useFloorIncrementRule) {
-      // =============================================================
-      // ★例外ルール: 階数を繰り上げるロジック (floorが0で、「その他」の場合)
-      // =============================================================
+      // 例外ルール: 階数を繰り上げるロジック
       let currentPrefix = `${allocation}${floor}`;
       const MAX_ITERATIONS = 20;
 
       for (let i = 0; i < MAX_ITERATIONS; i++) {
         const command = new ScanCommand({
-          TableName: "Orders", // ★注文テーブル名
+          TableName: ORDERS_TABLE, // ★★★ 変更点 ★★★
           FilterExpression: "begins_with(receptionNumber, :prefix)",
           ExpressionAttributeValues: { ":prefix": currentPrefix },
           ProjectionExpression: "receptionNumber",
@@ -91,12 +104,10 @@ export const handler = async (event) => {
       if (!newReceptionNumber) throw new Error("受付番号が全て埋まっています。");
 
     } else {
-      // =============================================================
-      // ★基本ルール: サフィックスをAA, AB...と増やすロジック (上記以外すべて)
-      // =============================================================
+      // 基本ルール: サフィックスを増やすロジック
       const prefix = `${allocation}${floor}`;
       const command = new ScanCommand({
-        TableName: "Orders", // ★注文テーブル名
+        TableName: ORDERS_TABLE, // ★★★ 変更点 ★★★
         FilterExpression: "begins_with(receptionNumber, :prefix)",
         ExpressionAttributeValues: { ":prefix": prefix },
         ProjectionExpression: "receptionNumber",

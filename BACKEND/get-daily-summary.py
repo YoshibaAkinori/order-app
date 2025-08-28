@@ -8,6 +8,16 @@ order_details_table = dynamodb.Table('OrderDetails')
 config_table = dynamodb.Table('Configurations')
 neta_master_table = dynamodb.Table('NetaMaster')
 
+# テーブル名を動的に解決するためのヘルパー関数
+TABLE_SUFFIXES = ['A', 'B', 'C']
+def get_table_suffix(year):
+    """年を元に、使用するテーブルのサフィックス(A, B, C)を決定する"""
+    numeric_year = int(year)
+    # 2024年を基準点 'C' とする
+    start_year = 2022
+    index = (numeric_year - start_year) % len(TABLE_SUFFIXES)
+    return TABLE_SUFFIXES[index]
+
 # DynamoDBのDecimal型をJSONに変換するためのヘルパー
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -27,6 +37,9 @@ def lambda_handler(event, context):
         
         day_to_find = date_str.split('-')[2]
         year_to_find = date_str.split('-')[0]
+
+        table_suffix = get_table_suffix(year_to_find)
+        order_details_table = dynamodb.Table(f'OrderDetails-{table_suffix}')
 
         # --- 1. 必要なマスターデータをDBから取得 ---
         config_response = config_table.get_item(Key={'configYear': year_to_find})
