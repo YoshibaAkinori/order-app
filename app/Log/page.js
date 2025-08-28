@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import LogEntry from '../../components/LogEntry';
 import { useConfiguration } from '../contexts/ConfigurationContext';
+import { getLogsAPI } from '../lib/logApi';
 
 const ChangeLogPage = () => {
   const [logs, setLogs] = useState([]);
@@ -23,19 +24,11 @@ const ChangeLogPage = () => {
       setError(null);
       
       try {
-        // ★★★ 変更点: APIのURLに year クエリパラメータを追加 ★★★
-        const response = await fetch(`https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/Logs?year=${selectedYear}`);
-        
-        if (!response.ok) {
-          throw new Error(`データの取得に失敗しました。ステータス: ${response.status}`);
-        }
-        
-        const data = await response.json();
+        // ★★★ APIライブラリの関数を呼び出すように変更 ★★★
+        const data = await getLogsAPI(selectedYear);
         
         if (data && data.success && Array.isArray(data.logs)) {
           setLogs(data.logs);
-        } else if (Array.isArray(data)) {
-          setLogs(data);
         } else {
           console.error('予期しないデータ形式:', data);
           setLogs([]);

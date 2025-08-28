@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useConfiguration } from '../contexts/ConfigurationContext';
 import NetaDrilldownModal from '../../components/NetaDrilldownModal';
+import { fetchSummaryAPI } from '../../app/lib/summaryApi';
 
 const SummaryPage = () => {
   const { configuration, loading: configLoading, error: configError, selectedYear } = useConfiguration();
@@ -33,20 +34,20 @@ const SummaryPage = () => {
 
   const handleFetchSummary = async () => {
     if (!selectedDate || !selectedRoute) {
-      alert('集計日と割り振り先を選択してください。');
+      alert('集計日と割り当てを選択してください。');
       return;
     }
     setIsLoading(true);
     setError(null);
+    setApiData(null);
+
     try {
-      const formattedDate = selectedDate.replaceAll('/', '-');
-      const apiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/daily-summary?date=${formattedDate}&route=${selectedRoute}`;
-      const response = await fetch(apiUrl);
-      if(!response.ok) throw new Error('集計データの取得に失敗しました。');
-      const data = await response.json();
+      // APIライブラリの関数を呼び出すだけ
+      const data = await fetchSummaryAPI(selectedDate, selectedRoute, selectedYear);
       setApiData(data);
     } catch (err) {
       setError(err.message);
+      console.error("Failed to fetch summary:", err);
     } finally {
       setIsLoading(false);
     }

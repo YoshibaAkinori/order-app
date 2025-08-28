@@ -1,9 +1,7 @@
-// yoshibaakinori/order-app/order-app-8e8445b07b62e3cdd230e64e794d4340ac1bdedf/app/settings/page.js
-
 "use client";
 import React, { useState } from 'react';
 import { useConfiguration } from '../contexts/ConfigurationContext';
-import { saveConfiguration } from '../lib/configApi';
+import { saveConfiguration, copyPreviousYearConfigAPI } from '../lib/configApi';
 import { createNeta, updateNeta, deleteNeta } from '../lib/netaApi';
 import ProductForm from '../../components/ProductForm';
 import NetaForm from '../../components/NetaForm';
@@ -120,13 +118,13 @@ export default function ProductAdminPage() {
   };
 
   const handleCopyFromPreviousYear = async () => {
-    const message = `${selectedYear - 1}年の設定をコピーして、${selectedYear}年の新しい設定を作成します。\n\nこの操作は同時に、一番古い年の注文データ（3年前）を初期化し、${selectedYear}年用のデータ領域として準備します。\n\nよろしいですか？`;
+    const message = `${selectedYear - 1}年の設定をコピーして、${selectedYear}年の新しい設定を作成します。`;
     if (!window.confirm(message)) return;
+    
     setIsCopying(true);
     try {
-      const response = await fetch(`https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/configurations/${selectedYear}/copy-from-previous`, { method: 'POST' });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'コピーに失敗しました。');
+      // APIライブラリの関数を呼び出す
+      const result = await copyPreviousYearConfigAPI(selectedYear);
       alert(result.message);
       fetchConfiguration(selectedYear);
     } catch (err) {

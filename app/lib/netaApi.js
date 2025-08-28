@@ -1,4 +1,4 @@
-const BASE_URL = 'https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com'; // ★ あなたのAPI GatewayのURL
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // 新しいネタを作成 (POST /neta-master)
 export const createNeta = async (netaData) => {

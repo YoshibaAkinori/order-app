@@ -2,30 +2,12 @@
 import React, { useState, useMemo } from 'react';
 import { useConfiguration } from '../contexts/ConfigurationContext';
 import Select from 'react-select';
-
-// API呼び出し用の関数 (別ファイルに分離するのが望ましい)
-const getNetaChangeOrders = async (date, route) => {
-  const formattedDate = date.replaceAll('/', '-');
-  const apiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/neta-changes?date=${formattedDate}&route=${encodeURIComponent(route)}`;
-  const response = await fetch(apiUrl);
-  if (!response.ok) throw new Error('データ取得エラー');
-  return await response.json();
-};
-
-const updateNetaChanges = async (order, newNetaChanges) => {
-  const apiUrl = `https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com/order-details/${order.receptionNumber}/${order.orderId}`;
-  const response = await fetch(apiUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ netaChanges: newNetaChanges }),
-  });
-  if (!response.ok) throw new Error('保存に失敗しました。');
-  return await response.json();
-};
-
+// ★★★ 新しいAPIライブラリから関数をインポート ★★★
+import { getNetaChangeOrdersAPI, updateNetaChangesAPI } from '../lib/netaChangeApi';
 
 const NetaChangeAdminPage = () => {
-  const { configuration, netaMaster, loading: configLoading } = useConfiguration();
+  // ★★★ selectedYearをコンテキストから取得 ★★★
+  const { configuration, netaMaster, loading: configLoading, selectedYear } = useConfiguration();
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedRoute, setSelectedRoute] = useState('');
   const [orders, setOrders] = useState([]);
@@ -40,7 +22,8 @@ const NetaChangeAdminPage = () => {
     if (!selectedDate || !selectedRoute) return;
     setIsLoading(true);
     try {
-      const data = await getNetaChangeOrders(selectedDate, selectedRoute);
+      // ★★★ APIライブラリの関数を使用（selectedYearを渡す） ★★★
+      const data = await getNetaChangeOrdersAPI(selectedDate, selectedRoute, selectedYear);
       setOrders(data);
     } catch (e) {
       alert(e.message);
@@ -67,7 +50,8 @@ const NetaChangeAdminPage = () => {
   
   const handleSaveChanges = async (order) => {
     try {
-      await updateNetaChanges(order, order.netaChanges);
+      // ★★★ APIライブラリの関数を使用（selectedYearを渡す） ★★★
+      await updateNetaChangesAPI(order, order.netaChanges, selectedYear);
       alert(`注文 ${order.orderId} のネタ変更を保存しました。`);
     } catch (e) {
       alert(e.message);
@@ -103,10 +87,9 @@ const NetaChangeAdminPage = () => {
             const originalNeta = productsMaster[productKey]?.neta.map(n => n.name) || [];
 
             return order.netaChanges[productKey].map(pattern => {
-                // ★★★ 2. selectedNetaが存在し、中身がある場合のみ表示する ★★★
                 const removedNeta = Object.keys(pattern.selectedNeta || {});
                 if (removedNeta.length === 0) {
-                    return null; // ワサビ抜きなどはここでスキップ
+                    return null;
                 }
 
                 return (

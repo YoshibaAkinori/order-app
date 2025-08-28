@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://viy41bgkvd.execute-api.ap-northeast-1.amazonaws.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // 汎用的なAPIリクエスト関数
 const request = async (endpoint, options = {}) => {

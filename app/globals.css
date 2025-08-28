@@ -2224,6 +2224,7 @@ th {
   border-radius: 8px;
 }
 
+
 .filters, .search-and-export {
   display: flex;
   align-items: center;
@@ -2443,7 +2444,7 @@ th {
 
 .settings-modal-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   border-bottom: 1px solid #e5e7eb;
   padding-bottom: 1rem;
@@ -2461,6 +2462,7 @@ th {
   cursor: pointer;
   line-height: 1;
   padding: 0;
+
 }
 /* === 設定ページのカード色分けスタイル === */
 .settings-card.color-group-1 {
@@ -2516,4 +2518,217 @@ th {
 .red-border-button:hover {
   background-color: rgb(239 68 68); /* bg-red-500 */
   color: rgb(255 255 255); /* text-white */
+}
+
+
+/* ヘッダー右側の全体コンテナ */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem; /* 要素間の適度な間隔 */
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem; /* 要素間の適度な間隔 */
+}
+
+/* 通知ベル全体のコンテナ */
+.notification-bell-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* 通知ベルボタン */
+.notification-bell-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  color: #4a5568;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.notification-bell-button:hover {
+  background-color: #f7fafc;
+  color: #2d3748;
+  transform: scale(1.05);
+}
+
+/* 通知バッジ */
+.notification-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  color: white;
+  border-radius: 50%;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* ドロップダウン */
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 0.75rem);
+  right: 0; /* 右寄せに変更 */
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+  width: 380px;
+  z-index: 1000;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+/* ドロップダウンの矢印 */
+.notification-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: 1rem;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid #e2e8f0;
+}
+
+.notification-dropdown::after {
+  content: '';
+  position: absolute;
+  top: -7px;
+  right: 1rem;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid white;
+}
+
+/* ドロップダウンヘッダー */
+.notification-dropdown-header {
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.95rem;
+}
+
+/* 通知リスト */
+.notification-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* スクロールバーのカスタマイズ */
+.notification-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notification-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.notification-list::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.notification-list::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* 通知アイテム */
+.notification-item {
+  display: flex;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.notification-item:hover {
+  background-color: #f8fafc;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item.read {
+  opacity: 0.7;
+  background-color: #fafafa;
+}
+
+/* 空の状態 */
+.notification-item-empty {
+  padding: 2rem 1.25rem;
+  text-align: center;
+  color: #a0aec0;
+  font-size: 0.9rem;
+}
+
+/* 通知アイコン */
+.notification-icon {
+  margin-right: 0.75rem;
+  padding-top: 0.125rem;
+  color: #667eea;
+}
+
+/* 通知内容 */
+.notification-content {
+  flex-grow: 1;
+}
+
+.notification-subject {
+  font-weight: 600;
+  margin: 0 0 0.375rem 0;
+  color: #2d3748;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.notification-message {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 480px) {
+  .notification-dropdown {
+    width: 320px;
+    right: -1rem;
+  }
 }

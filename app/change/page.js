@@ -5,12 +5,11 @@ import { Search, Send, Plus, X as CloseIcon, Trash2 } from 'lucide-react';
 import CustomerInfoSection from '../../components/CustomerInfoSection';
 import SingleOrderSection from '../../components/SingleOrderSection';
 import ConfirmationModal from '../../components/ConfirmationModal';
-import { generateEmailHtml } from '../../utils/emailGenerator';
+
 import { 
   searchOrderAPI, 
   updateOrderAPI, 
   cancelAllOrdersAPI, 
-  cancelSingleOrderAPI 
 } from '../lib/changeApi';
 
 const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
@@ -77,8 +76,8 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
   }, [initialOrderId]);
 
   const getDocumentType = useCallback((paymentMethod) => {
-    if (['現金', 'クレジットカード'].includes(paymentMethod)) return '領収書';
-    if (['銀行振込', '請求書払い'].includes(paymentMethod)) return '請求書';
+    if (['代金引換'].includes(paymentMethod)) return '領収書';
+    if (['後日振込(請求書払い)'].includes(paymentMethod)) return '請求書';
     return '';
   }, []); 
 

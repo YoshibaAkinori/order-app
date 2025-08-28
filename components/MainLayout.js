@@ -9,6 +9,7 @@ import YearSelector from './YearSelector'; // YearSelectorをインポート
 export default function MainLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { isLoggedIn, authLoading, logout } = useConfiguration();
+  
 
   // アプリケーションの初回ロード時に一度だけAmplifyを設定
   useEffect(() => {
@@ -28,7 +29,7 @@ export default function MainLayout({ children }) {
 
   return (
     <>
-      {isLoggedIn && <SharedHeader onMenuClick={() => setIsSidebarOpen(true)} />}
+      {isLoggedIn && <SharedHeader onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />}
 
       {isLoggedIn && isSidebarOpen && (
         <>
