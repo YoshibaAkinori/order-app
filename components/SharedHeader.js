@@ -1,12 +1,21 @@
 "use client";
 import React from 'react';
 import NotificationBell from './NotificationBell'; 
+import Image from 'next/image';
 
 const SharedHeader = ({ onMenuClick }) => {
   return (
     <header className="shared-header">
+      <div className="logo-container">
+          <Image 
+            src="/logo.png" // publicフォルダからの相対パス
+            alt="Matsue-order-appLogo" 
+            width={60} 
+            height={40} 
+            priority 
+          />
+        </div>
       <div className="header-left">
-        {/* ★★★ ここからが変更点 ★★★ */}
         <NotificationBell />
       </div>
       <div className="header-title">
