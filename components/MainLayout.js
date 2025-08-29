@@ -5,6 +5,7 @@ import { configureAmplify } from '../utils/amplify-config';
 import SharedHeader from "./SharedHeader";
 import SidebarInfoSection from './SidebarInfoSection';
 import YearSelector from './YearSelector'; // YearSelectorをインポート
+import Link from 'next/link'; 
 
 export default function MainLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -46,14 +47,14 @@ export default function MainLayout({ children }) {
               <YearSelector />
             </div>
             
-            <a href="/" onClick={() => setIsSidebarOpen(false)}>新規注文</a>
-            <a href="./change" onClick={() => setIsSidebarOpen(false)}>注文変更</a>
-            <a href="./dashboard" onClick={() => setIsSidebarOpen(false)}>注文一覧</a>
-            <a href="./allocations" onClick={() => setIsSidebarOpen(false)}>割り当て管理</a>
-            <a href="./netacounts" onClick={() => setIsSidebarOpen(false)}>ネタ数</a>
-            <a href="./netachange" onClick={() => setIsSidebarOpen(false)}>ネタ変更詳細</a>
-            <a href="./settings" onClick={() => setIsSidebarOpen(false)}>設定管理</a>
-            <a href="./Log" onClick={() => setIsSidebarOpen(false)}>変更ログ</a>
+            <Link href="/" onClick={() => setIsSidebarOpen(false)}>新規注文</Link>
+            <Link href="./change" onClick={() => setIsSidebarOpen(false)}>注文変更</Link>
+            <Link href="./dashboard" onClick={() => setIsSidebarOpen(false)}>注文一覧</Link>
+            <Link href="./allocations" onClick={() => setIsSidebarOpen(false)}>割り当て管理</Link>
+            <Link href="./netacounts" onClick={() => setIsSidebarOpen(false)}>ネタ数</Link>
+            <Link href="./netachange" onClick={() => setIsSidebarOpen(false)}>ネタ変更詳細</Link>
+            <Link href="./settings" onClick={() => setIsSidebarOpen(false)}>設定管理</Link>
+            <Link href="./Log" onClick={() => setIsSidebarOpen(false)}>変更ログ</Link>
             <div style={{marginTop: 'auto'}}>
               <button onClick={logout} className="logout-button-sidebar">ログアウト</button>
             </div>
