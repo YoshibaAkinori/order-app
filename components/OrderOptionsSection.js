@@ -34,10 +34,11 @@ const OrderOptionsSection = ({
               onClick={() => updateOrder(order.id, { hasNetaChange: !order.hasNetaChange })}
               className={`neta-change-btn ${order.hasNetaChange ? 'active' : 'inactive'}`}
             >
-              {order.hasNetaChange ? '✓ ネタ変更あり' : 'ネタ変更'}
+              {order.hasNetaChange ? '✓ 変更あり' : '商品変更'}
             </button>
             <span className="neta-change-btn-note">
-              ネタの変更・ワサビ抜き・折など商品の変更がある場合はクリックしてください
+              ネタ変更・ワサビ抜き・折など<br />
+              商品の変更がある場合はクリックしてください
             </span>
           </div>
 
