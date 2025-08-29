@@ -5,6 +5,13 @@ const NetaDrilldownModal = ({ summaryData, onClose }) => {
   const [isOpen, setIsOpen] = useState(false);
   const printRef = useRef(null); // ★ 1. 印刷したい要素を参照するためのRef
 
+  const sortedNetaList = useMemo(() => {
+    if (!masters.netaMaster) return [];
+    return [...masters.netaMaster].sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
+  }, [masters.netaMaster]);
+
+  const productList = Object.keys(masters.products).sort((a,b) => Number(a) - Number(b));
+
   useEffect(() => {
     const timer = setTimeout(() => setIsOpen(true), 10);
     return () => clearTimeout(timer);
@@ -50,12 +57,6 @@ const NetaDrilldownModal = ({ summaryData, onClose }) => {
 
   const { neta_summary, neta_drilldown, masters } = summaryData;
 
-  const sortedNetaList = useMemo(() => {
-    if (!masters.netaMaster) return [];
-    return [...masters.netaMaster].sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
-  }, [masters.netaMaster]);
-
-  const productList = Object.keys(masters.products).sort((a,b) => Number(a) - Number(b));
 
   return (
     <div className="modal-backdrop-sidebar" onClick={handleClose}>
