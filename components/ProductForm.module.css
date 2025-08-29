@@ -1,3 +1,5 @@
+/* components/ProductForm.module.css */
+
 .modalBackdrop {
   position: fixed;
   top: 0;
@@ -8,7 +10,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 1100; /* ★ 1000から1100に変更 */
 }
 
 .modalContent {
