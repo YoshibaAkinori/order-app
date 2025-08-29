@@ -1,5 +1,13 @@
 "use client";
-import React from 'react'; // useState, useEffectは不要になったので削除
+import React from 'react'; 
+
+const zenkakuToHankaku = (str) => {
+  if (!str) return str; // nullやundefinedの場合はそのまま返す
+  return str.replace(/[０-９]/g, (char) => {
+    return String.fromCharCode(char.charCodeAt(0) - 0xFEE0);
+  });
+};
+
 
 const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, onLocationSelect, allocationNumber, isOtherSelected }) => {
 
@@ -8,7 +16,20 @@ const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, on
 
     onLocationSelect(e.target.value);
   };
+  const handleFloorNumberChange = (e) => {
+    // 1. 全角数字を半角に変換
+    const hankakuValue = zenkakuToHankaku(e.target.value);
+    // 2. 数字以外の文字を削除
+    const numericOnlyValue = hankakuValue.replace(/[^0-9]/g, '');
 
+    // ★ 変更点：シンプルで安全なオブジェクトを作成して親関数を呼び出す
+    handleInputChange({
+      target: {
+        name: 'floorNumber', // 入力欄の名前を直接指定
+        value: numericOnlyValue,
+      }
+    });
+  };
 
   return (
     <div className="customer-info-section">
@@ -83,8 +104,8 @@ const CustomerInfoSection = ({ formData, handleInputChange, allocationMaster, on
               <input
                 type="text" // ★★★ typeを"text"に変更して"0"も扱えるようにする ★★★
                 name="floorNumber"
+                onChange={handleFloorNumberChange}
                 value={formData.floorNumber}
-                onChange={handleInputChange}
                 className="customer-info-input"
                 placeholder="例: 2"
               />

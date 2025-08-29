@@ -18,8 +18,8 @@ const NotificationBell = () => {
         };
 
         fetchNotifications();
-        // 1分ごとに通知を自動更新
-        const interval = setInterval(fetchNotifications, 60000); 
+        // 1時間 (60分 * 60秒 * 1000ミリ秒) ごとに通知を自動更新
+        const interval = setInterval(fetchNotifications, 60 * 60 * 1000);
         return () => clearInterval(interval);
     }, []);
 
