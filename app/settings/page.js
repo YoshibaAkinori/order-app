@@ -365,39 +365,39 @@ export default function ProductAdminPage() {
                 <div className="settings-dashboard">
                   {/* --- グループ1: 青色 --- */}
                   <div className="settings-card color-group-1" onClick={() => setOpenModal('deliveryDates')}>
-                    <h3>配達可能日の管理</h3>
+                    <h3>配達日管理</h3>
                     <p>注文を受け付ける日付を設定します。</p>
                   </div>
                   <div className="settings-card color-group-1" onClick={() => setOpenModal('deliveryTimes')}>
-                    <h3>配達時間帯の管理</h3>
+                    <h3>配達時間管理</h3>
                     <p>配達の時間帯の選択肢を設定します。</p>
                   </div>
                   <div className="settings-card color-group-1" onClick={() => setOpenModal('products')}>
-                    <h3>通常メニューの管理</h3>
+                    <h3>通常メニュー管理</h3>
                     <p>通常メニューの商品内容や価格を設定します。</p>
                   </div>
                   <div className="settings-card color-group-1" onClick={() => setOpenModal('specialMenus')}>
-                    <h3>特殊メニューの管理</h3>
+                    <h3>特殊メニュー管理</h3>
                     <p>その他の注文や特別メニューを設定します。</p>
                   </div>
 
                   {/* --- グループ2: 緑色 --- */}
                   <div className="settings-card color-group-2" onClick={() => setOpenModal('deliveryRoutes')}>
-                    <h3>割り振り担当の管理</h3>
+                    <h3>割り振り管理</h3>
                     <p>配達担当の名称を設定します。</p>
                   </div>
                   <div className="settings-card color-group-2" onClick={() => setOpenModal('deliveryWariate')}>
-                    <h3>割り当ての管理</h3>
+                    <h3>割り当て管理</h3>
                     <p>割り振り担当がどの配達先を担当するかを設定します。</p>
                   </div>
                   <div className="settings-card color-group-2" onClick={() => setOpenModal('allocationMaster')}>
-                    <h3>割り当てアルファベット</h3>
+                    <h3>割り当て番号管理</h3>
                     <p>受付番号に使われる記号と住所の対応を設定します。</p>
                   </div>
 
                   {/* --- グループ3: 黄色 --- */}
                   <div className="settings-card color-group-3" onClick={() => setOpenModal('netaMaster')}>
-                    <h3>ネタ種類の管理</h3>
+                    <h3>ネタ種類管理</h3>
                     <p>商品に使われるネタの大元マスタを管理します。</p>
                   </div>
                 </div>
