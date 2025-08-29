@@ -7,15 +7,18 @@ import ProductForm from '../../components/ProductForm';
 import NetaForm from '../../components/NetaForm';
 import AllocationForm from '../../components/AllocationForm';
 import WariateForm from '../../components/WariateForm';
-// ★★★ YearSelectorは不要になったので削除 ★★★
+// ★ 新しいコンポーネントをインポート
+import DeliveryDatesModal from '../../components/DeliveryDatesModal';
+import DeliveryTimesModal from '../../components/DeliveryTimesModal';
+import DeliveryRoutesModal from '../../components/DeliveryRoutesModal';
+
 
 export default function ProductAdminPage() {
   const { configuration, netaMaster, loading, error, selectedYear, fetchConfiguration } = useConfiguration();
   
-  // モーダル管理用のState
   const [openModal, setOpenModal] = useState(null);
 
-  // 各フォーム用のState
+  // 各フォーム用のState（変更なし）
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingType, setEditingType] = useState('products');
@@ -25,15 +28,12 @@ export default function ProductAdminPage() {
   const [editingAllocation, setEditingAllocation] = useState(null);
   const [isWariateFormOpen, setIsWariateFormOpen] = useState(false);
   const [editingWariate, setEditingWariate] = useState(null);
-
-  // 各リスト管理用のState
-  const [newDate, setNewDate] = useState('');
-  const [newTime, setNewTime] = useState('');
-  const [newRoute, setNewRoute] = useState('');
+  
+  // ★ newDate, newTime, newRoute のstateは不要になったので削除
   
   const [isCopying, setIsCopying] = useState(false);
 
-  // --- (ここから handleWariateFormSubmit まで変更なし) ---
+  // --- (ここから handleUpdateConfigList まで変更なし) ---
   const handleAddNewProduct = (type) => { setIsProductFormOpen(true); setEditingProduct(null); setEditingType(type); };
   const handleEditProduct = (productKey, type) => { setIsProductFormOpen(true); setEditingProduct({ ...configuration[type][productKey], productKey }); setEditingType(type); };
   const handleDeleteProduct = async (productKey, type) => {
@@ -68,15 +68,16 @@ export default function ProductAdminPage() {
       fetchConfiguration(selectedYear);
     }).catch(alert);
   };
+  
+  // ★ handleUpdateConfigList は各モーダルから呼び出されるように変更
   const handleUpdateConfigList = async (listName, newList) => {
     await saveConfiguration(selectedYear, { ...configuration, [listName]: newList })
       .then(() => fetchConfiguration(selectedYear))
       .catch(alert);
   };
-  const handleAddDate = () => { if (newDate) { handleUpdateConfigList('deliveryDates', [...(configuration.deliveryDates || []), newDate]); setNewDate(''); } };
-  const handleDeleteDate = (index) => handleUpdateConfigList('deliveryDates', configuration.deliveryDates.filter((_, i) => i !== index));
-  const handleAddTime = () => { if (newTime) { handleUpdateConfigList('deliveryTimes', [...(configuration.deliveryTimes || []), newTime]); setNewTime(''); } };
-  const handleDeleteTime = (index) => handleUpdateConfigList('deliveryTimes', configuration.deliveryTimes.filter((_, i) => i !== index));
+
+  // ★ handleAddDate, handleDeleteDate などは各コンポーネント内に移動したため削除
+
   const handleAddNewAllocation = () => {
     const keys = Object.keys(configuration?.allocationMaster || {});
     const nextPrefix = keys.length > 0 ? String.fromCharCode(Math.max(...keys.map(k => k.charCodeAt(0))) + 1) : 'A';
@@ -101,8 +102,9 @@ export default function ProductAdminPage() {
       fetchConfiguration(selectedYear);
     }).catch(alert);
   };
-  const handleAddRoute = () => { if (newRoute) { handleUpdateConfigList('deliveryRoutes', [...(configuration.deliveryRoutes || []), newRoute]); setNewRoute(''); } };
-  const handleDeleteRoute = (index) => handleUpdateConfigList('deliveryRoutes', (configuration.deliveryRoutes || []).filter((_, i) => i !== index));
+  
+  // ★ handleAddRoute, handleDeleteRoute は DeliveryRoutesModal に移動したため削除
+  
   const handleAddNewWariate = () => { setIsWariateFormOpen(true); setEditingWariate(null); };
   const handleEditWariate = (wariate) => { setIsWariateFormOpen(true); setEditingWariate(wariate); };
   const handleDeleteWariate = (index) => {
@@ -123,7 +125,6 @@ export default function ProductAdminPage() {
     
     setIsCopying(true);
     try {
-      // APIライブラリの関数を呼び出す
       const result = await copyPreviousYearConfigAPI(selectedYear);
       alert(result.message);
       fetchConfiguration(selectedYear);
@@ -140,38 +141,30 @@ export default function ProductAdminPage() {
   const allocationMaster = configuration?.allocationMaster || {};
 
   const ModalContent = () => {
-    // ... (ModalContentのswitch文は変更なし)
     switch (openModal) {
+      // ★★★ ここからが修正箇所 ★★★
       case 'deliveryDates':
         return (
-          <>
-            <h2>配達可能日の管理</h2>
-            <div className="list-edit-form">
-              <input type="text" value={newDate} onChange={(e) => setNewDate(e.target.value)} placeholder="例: 2025/01/01"/>
-              <button onClick={handleAddDate}>追加</button>
-            </div>
-            <ul className="item-list">
-              {(configuration?.deliveryDates || []).map((date, index) => (
-                <li key={index}>{date}<button onClick={() => handleDeleteDate(index)}>×</button></li>
-              ))}
-            </ul>
-          </>
+          <DeliveryDatesModal
+            deliveryDates={configuration?.deliveryDates}
+            onUpdate={(newList) => handleUpdateConfigList('deliveryDates', newList)}
+          />
         );
       case 'deliveryTimes':
         return (
-          <>
-            <h2>配達時間帯の管理</h2>
-            <div className="list-edit-form">
-              <input type="text" value={newTime} onChange={(e) => setNewTime(e.target.value)} placeholder="例: 11時半まで" />
-              <button onClick={handleAddTime}>追加</button>
-            </div>
-            <ul className="item-list">
-              {(configuration?.deliveryTimes || []).map((time, index) => (
-                <li key={index}>{time}<button onClick={() => handleDeleteTime(index)}>×</button></li>
-              ))}
-            </ul>
-          </>
+          <DeliveryTimesModal
+            deliveryTimes={configuration?.deliveryTimes}
+            onUpdate={(newList) => handleUpdateConfigList('deliveryTimes', newList)}
+          />
         );
+      case 'deliveryRoutes':
+          return (
+            <DeliveryRoutesModal
+              deliveryRoutes={configuration?.deliveryRoutes}
+              onUpdate={(newList) => handleUpdateConfigList('deliveryRoutes', newList)}
+            />
+          );
+      // ★★★ ここまでが修正箇所 ★★★
       case 'products':
         return (
           <>
@@ -228,21 +221,6 @@ export default function ProductAdminPage() {
                 ))}
               </tbody>
             </table>
-            </>
-          );
-      case 'deliveryRoutes':
-          return (
-            <>
-              <h2>割り振り担当の管理</h2>
-              <div className="list-edit-form">
-                <input type="text" value={newRoute} onChange={(e) => setNewRoute(e.target.value)} placeholder="例: 県庁担当" />
-                <button onClick={handleAddRoute}>追加</button>
-              </div>
-              <ul className="item-list">
-                {(configuration?.deliveryRoutes || []).map((route, index) => (
-                  <li key={index}>{route}<button onClick={() => handleDeleteRoute(index)}>×</button></li>
-                ))}
-              </ul>
             </>
           );
       case 'deliveryWariate':
@@ -332,14 +310,11 @@ export default function ProductAdminPage() {
     <div style={{ padding: '2rem' }}>
       <h1 className="admin-header">設定管理</h1>
 
-      {/* --- (各フォーム用のモーダルは変更なし) --- */}
       {isProductFormOpen && ( <ProductForm initialData={editingProduct} onSubmit={handleProductFormSubmit} onCancel={() => setIsProductFormOpen(false)} editingType={editingType} /> )}
       {isNetaFormOpen && ( <NetaForm initialData={editingNeta} onSubmit={handleNetaFormSubmit} onCancel={() => setIsNetaFormOpen(false)} netaMaster={netaMaster} /> )}
       {isAllocationFormOpen && ( <AllocationForm initialData={editingAllocation} onSubmit={handleAllocationFormSubmit} onCancel={() => setIsAllocationFormOpen(false)} /> )}
       {isWariateFormOpen && ( <WariateForm initialData={editingWariate} onSubmit={handleWariateFormSubmit} onCancel={() => setIsWariateFormOpen(false)} /> )}
       
-      {/* ★★★ YearSelectorをここから削除 ★★★ */}
-
       {selectedYear ? (
         <>
           {loading && <p>データを再読み込みしています...</p>}
@@ -361,9 +336,7 @@ export default function ProductAdminPage() {
                   </div>
                 </div>
               ) : (
-                // ★★★ ここからが変更点 (カードのUIと色分け) ★★★
                 <div className="settings-dashboard">
-                  {/* --- グループ1: 青色 --- */}
                   <div className="settings-card color-group-1" onClick={() => setOpenModal('deliveryDates')}>
                     <h3>配達日管理</h3>
                     <p>注文を受け付ける日付を設定します。</p>
@@ -380,8 +353,6 @@ export default function ProductAdminPage() {
                     <h3>特殊メニュー管理</h3>
                     <p>その他の注文や特別メニューを設定します。</p>
                   </div>
-
-                  {/* --- グループ2: 緑色 --- */}
                   <div className="settings-card color-group-2" onClick={() => setOpenModal('deliveryRoutes')}>
                     <h3>割り振り管理</h3>
                     <p>配達担当の名称を設定します。</p>
@@ -394,8 +365,6 @@ export default function ProductAdminPage() {
                     <h3>割り当て番号管理</h3>
                     <p>受付番号に使われる記号と住所の対応を設定します。</p>
                   </div>
-
-                  {/* --- グループ3: 黄色 --- */}
                   <div className="settings-card color-group-3" onClick={() => setOpenModal('netaMaster')}>
                     <h3>ネタ種類管理</h3>
                     <p>商品に使われるネタの大元マスタを管理します。</p>
@@ -409,7 +378,6 @@ export default function ProductAdminPage() {
         <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>操作したい設定年を選択してください。</p>
       )}
 
-      {/* --- 設定項目ごとの詳細モーダル --- */}
       {openModal && (
         <div className="settings-modal-backdrop" onClick={() => setOpenModal(null)}>
           <div className="settings-modal-content" onClick={e => e.stopPropagation()}>
