@@ -1,3 +1,5 @@
+// yoshibaakinori/order-app/order-app-8094ec39b25a835d91830515c67061c5f07dcf37/app/allocations/page.js
+
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { useConfiguration } from '../contexts/ConfigurationContext';
@@ -11,7 +13,6 @@ const AllocationPage = () => {
   const [error, setError] = useState(null);
   const [expandedPrefix, setExpandedPrefix] = useState(null);
   
-  // ★ 1. 割り当ての状態を管理するstate (キーは 'C' や 'C-3' など)
   const [assignments, setAssignments] = useState({});
 
   const deliveryDates = useMemo(() => (configuration?.deliveryDates || []), [configuration]);
@@ -22,20 +23,23 @@ const AllocationPage = () => {
   useEffect(() => {
     if (orders.length > 0) {
       const restoredAssignments = {};
-      const assignmentsByPrefix = {}; // 各割振番号ごとの割り当てを一時的に集計
+      const assignmentsByPrefix = {}; 
 
       orders.forEach(order => {
         if (order.assignedRoute) {
-          const prefix = order.orderId?.[2];
+          const orderId = order.orderId;
+          const prefix = orderId?.[2];
           
           if (order.isSameAddress === false || !prefix || !allocationMaster[prefix] || allocationMaster[prefix].address === 'その他') {
-            restoredAssignments[order.orderId] = order.assignedRoute;
+            restoredAssignments[orderId] = order.assignedRoute;
           } else {
-            const floor = order.orderId?.[3] || '階数未定';
+            // ### ▼▼▼ 変更箇所1 ▼▼▼ ###
+            const floorMatch = orderId ? orderId.match(/^\d+[A-Z](\d+)/) : null;
+            const floor = floorMatch ? floorMatch[1] : '階数未定';
+            // ### ▲▲▲ 変更箇所 ▲▲▲ ###
             const floorKey = `${prefix}-${floor}`;
             restoredAssignments[floorKey] = order.assignedRoute;
             
-            // 全体割り当てを推測するために、prefixごとの割り当てを記録
             if (!assignmentsByPrefix[prefix]) {
               assignmentsByPrefix[prefix] = [];
             }
@@ -44,12 +48,10 @@ const AllocationPage = () => {
         }
       });
 
-      // 記録した情報から、全体割り当てを決定
       Object.keys(assignmentsByPrefix).forEach(prefix => {
         const routes = assignmentsByPrefix[prefix];
         if (routes.length > 0) {
           const firstRoute = routes[0];
-          // そのprefixの全ての注文が同じ割り当て先なら、全体割り当てもセットする
           if (routes.every(route => route === firstRoute)) {
             restoredAssignments[prefix] = firstRoute;
           }
@@ -64,7 +66,7 @@ const AllocationPage = () => {
     const date = e.target.value;
     setSelectedDate(date);
     setExpandedPrefix(null);
-    setAssignments({}); // 日付が変わったら割り当てをリセット
+    setAssignments({}); 
     if (!date) {
       setOrders([]);
       return;
@@ -93,11 +95,16 @@ const AllocationPage = () => {
     });
 
     orders.forEach(order => {
-      const prefix = order.orderId?.[2];
+      const orderId = order.orderId;
+      const prefix = orderId?.[2];
+      
       if (order.isSameAddress === false || !prefix || !allocationMaster[prefix] || allocationMaster[prefix].address === 'その他') {
         exceptions.push(order);
       } else {
-        const floor = order.orderId?.[3] || '階数未定';
+        // ### ▼▼▼ 変更箇所2 ▼▼▼ ###
+        const floorMatch = orderId ? orderId.match(/^\d+[A-Z](\d+)/) : null;
+        const floor = floorMatch ? floorMatch[1] : '階数未定';
+        // ### ▲▲▲ 変更箇所 ▲▲▲ ###
         const orderTotalQuantity = (order.orderItems || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
         
         if (summary[prefix]) {
@@ -114,13 +121,11 @@ const AllocationPage = () => {
     return { summaryData: summary, groupedByFloor: grouped, exceptionOrders: exceptions };
   }, [orders, allocationMaster]);
   
-  // ★ 2. 割り当てを変更する、より賢いハンドラ関数
   const handleAssignmentChange = (key, route) => {
     setAssignments(prevAssignments => {
       const newAssignments = { ...prevAssignments };
       newAssignments[key] = route;
   
-      // 全体キー('C'など)が変更された場合、その下の階層の「個別設定」をクリアして全体設定に追従させる
       if (key.length === 1) {
         if (groupedByFloor[key]) {
           Object.keys(groupedByFloor[key]).forEach(floor => {
@@ -187,7 +192,6 @@ const AllocationPage = () => {
       return;
     }
     
-    // 処理中であることをユーザーに伝える（任意）
     const updatingButton = document.querySelector('.confirm-btn');
     if(updatingButton) updatingButton.textContent = '更新中...';
 
