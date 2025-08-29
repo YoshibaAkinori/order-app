@@ -37,7 +37,7 @@ const OrderOptionsSection = ({
               {order.hasNetaChange ? '✓ ネタ変更あり' : 'ネタ変更'}
             </button>
             <span className="neta-change-btn-note">
-              ネタの変更がある場合はクリックしてください
+              ネタの変更・ワサビ抜き・折など商品の変更がある場合はクリックしてください
             </span>
           </div>
 
