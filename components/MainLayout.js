@@ -6,6 +6,7 @@ import SharedHeader from "./SharedHeader";
 import SidebarInfoSection from './SidebarInfoSection';
 import YearSelector from './YearSelector'; // YearSelectorをインポート
 import Link from 'next/link'; 
+import Image from 'next/image';
 
 export default function MainLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -67,7 +68,16 @@ export default function MainLayout({ children }) {
           children
         ) : (
           <div className="login-prompt">
-            <h2>寿司注文管理システム</h2>
+            <div className="logo-container">
+              <Image 
+                src="/logo.png" // publicフォルダからの相対パス
+                alt="Matsue-order-appLogo" 
+                width={60} 
+                height={40} 
+                priority 
+              />
+            </div>
+            <h2>松栄寿司注文管理システム</h2>
             <SidebarInfoSection />
           </div>
         )}
