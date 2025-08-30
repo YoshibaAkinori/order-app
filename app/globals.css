@@ -51,7 +51,7 @@ button {
   margin-left: auto;   /* ★追加: 中央揃えのため */
   margin-right: auto;  /* ★追加: 中央揃えのため */
 }
-@media (max-width: 750px) {
+@media (max-width: 870px) {
   .form-container {
     width: 100%;     /* 幅を100%に広げる */
     padding: 1rem;   /* 内側の余白も少し狭くして、スペースを確保 */

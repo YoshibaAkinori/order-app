@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "寿司注文管理システム",
-  description: "寿司店の注文管理を行うためのアプリケーションです。",
+  title: "松栄寿司注文管理システム",
+  description: "松栄寿司の年末年始注文管理を行うためのアプリケーションです。",
 };
 
 export default function RootLayout({ children }) {
