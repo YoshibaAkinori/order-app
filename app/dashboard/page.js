@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useConfiguration } from '../contexts/ConfigurationContext';
+import { useOrderData } from '../contexts/OrderDataContext';
 import { searchOrders } from '../lib/orderApi';
 import ChangeOrderPage from '../change/page';
 import Link from 'next/link';
@@ -100,6 +101,15 @@ const OrderListPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState(null);
+  const { setOrders, setCurrentDate } = useOrderData();
+  
+
+  useEffect(() => {
+    // このコンポーネントが画面から消える時に実行されるクリーンアップ関数
+    return () => {
+      setOrders([]);
+    };
+  }, [setOrders]);
 
   const deliveryDates = useMemo(() => (configuration?.deliveryDates || []), [configuration]);
   const deliveryRoutes = useMemo(() => (configuration?.deliveryRoutes || []), [configuration]);
@@ -148,10 +158,12 @@ const OrderListPage = () => {
     setIsLoading(true); 
     setError(null);
     setSelectedRoute('');
-
+    setOrders([]);
+    setCurrentDate(selectedDate);
     try {
       const data = await searchOrders(selectedDate, selectedYear); 
       setApiData(data);
+      setOrders(data.orders || []);
     } catch (err) { setError(err.message); setApiData(null); }
     finally { setIsLoading(false); }
   };

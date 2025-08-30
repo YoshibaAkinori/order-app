@@ -2,6 +2,7 @@
 
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useConfiguration } from '../contexts/ConfigurationContext';
 import { getOrdersByDate, updateAllocations } from '../lib/allocationApi';
 
@@ -12,6 +13,7 @@ const AllocationPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [expandedPrefix, setExpandedPrefix] = useState(null);
+  const searchParams = useSearchParams();
   
   const [assignments, setAssignments] = useState({});
 
@@ -19,6 +21,37 @@ const AllocationPage = () => {
   const allocationMaster = useMemo(() => (configuration?.allocationMaster || {}), [configuration]);
   const deliveryRoutes = useMemo(() => (configuration?.deliveryRoutes || []), [configuration]);
   const deliveryWariate = useMemo(() => (configuration?.deliveryWariate || []), [configuration]);
+
+  useEffect(() => {
+    const dateFromUrl = searchParams.get('date'); // URLから 'date' パラメータを取得
+    if (dateFromUrl) {
+      const formattedDate = dateFromUrl.replaceAll('-', '/'); // YYYY-MM-DDをYYYY/MM/DDに変換
+      setSelectedDate(formattedDate); // stateを更新
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const fetchOrdersForSelectedDate = async () => {
+      if (!selectedDate) {
+        setOrders([]);
+        return;
+      }
+      setIsLoading(true);
+      setError(null);
+      try {
+        const formattedDateForApi = selectedDate.replaceAll('/', '-');
+        const fetchedOrders = await getOrdersByDate(formattedDateForApi, selectedYear);
+        setOrders(fetchedOrders);
+      } catch (err) {
+        setError(err.message);
+        setOrders([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchOrdersForSelectedDate();
+  }, [selectedDate, selectedYear]);
 
   useEffect(() => {
     if (orders.length > 0) {
