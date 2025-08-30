@@ -220,6 +220,32 @@ setManualReceipts(loadedReceipts);
   }
 };
 const handleConfirmClick = () => {
+  for (const order of orders) {
+    // この注文にネタ変更があるか確認
+    if (order.netaChanges) {
+      // ネタ変更が設定されている各商品（極、匠など）をチェック
+      for (const productKey in order.netaChanges) {
+        // 1. ネタ変更の合計個数を計算
+        const patterns = order.netaChanges[productKey] || [];
+        const netaChangeSum = patterns.reduce((sum, pattern) => sum + (parseInt(pattern.quantity) || 0), 0);
+
+        // 2. 対応する商品の注文数を取得
+        const mainItem = order.orderItems.find(item => item.productKey === productKey);
+        const mainQuantity = parseInt(mainItem?.quantity) || 0;
+
+        // 3. もしネタ変更の合計が注文数を超えていたら、エラーを出して処理を中断
+        if (netaChangeSum > mainQuantity) {
+          const productName = mainItem?.name || `商品(${productKey})`;
+          const orderIndex = orders.findIndex(o => o.id === order.id);
+          
+          alert(
+            `注文 #${orderIndex + 1} の「${productName}」において、ネタ変更の合計個数（${netaChangeSum}個）が商品の注文数（${mainQuantity}個）を超えています。\n\n個数を確認してください。`
+          );
+          return; // ★ここで処理を中断させる
+        }
+      }
+    }
+  }
   // 1. キャンセルされていない有効な注文の合計金額を計算
   const activeOrders = orders.filter(o => o.orderStatus !== 'CANCELED');
   const grandTotal = activeOrders.reduce((total, order) => total + calculateOrderTotal(order), 0);
