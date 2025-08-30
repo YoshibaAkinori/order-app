@@ -5,6 +5,8 @@ const NetaDrilldownModal = ({ summaryData, onClose }) => {
   const [isOpen, setIsOpen] = useState(false);
   const printRef = useRef(null); // ★ 1. 印刷したい要素を参照するためのRef
 
+  const { neta_summary, neta_drilldown, masters } = summaryData;
+
   const sortedNetaList = useMemo(() => {
     if (!masters.netaMaster) return [];
     return [...masters.netaMaster].sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
@@ -54,8 +56,6 @@ const NetaDrilldownModal = ({ summaryData, onClose }) => {
   };
 
   if (!summaryData) return null;
-
-  const { neta_summary, neta_drilldown, masters } = summaryData;
 
 
   return (
