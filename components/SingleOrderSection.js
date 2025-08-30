@@ -51,7 +51,7 @@ const SingleOrderSection = ({
 
   const handleItemChange = (itemIndex, field, value) => {
     const halfWidthValue = String(value).replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0));
-    const finalValue = parseInt(halfWidthValue, 10) || 0;
+    const finalValue = parseInt(halfWidthValue, 10) || "";
     const updatedItems = order.orderItems.map((item, i) => (i === itemIndex ? { ...item, [field]: finalValue } : item));
     updateOrder(order.id, { orderItems: updatedItems });
   };
@@ -82,15 +82,27 @@ const SingleOrderSection = ({
   };
 
   const handleNetaChangeDetail = (productKey, patternId, field, value) => {
-    let finalValue = value;
-    if (field === 'quantity') {
-      const intValue = parseInt(String(value).replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0)), 10) || 0;
-      if (intValue > getMaxQuantityForPattern(productKey, patternId)) return;
-      finalValue = intValue;
+  let finalValue = value;
+
+  if (field === 'quantity') {
+    // 1. 全角数字を半角に直し、さらに数字以外の文字を削除
+    const halfWidthValue = String(value).replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xFEE0));
+    const numericOnly = halfWidthValue.replace(/[^0-9]/g, '');
+
+    // 2. もし入力が空文字なら、finalValueも空文字にする
+    if (numericOnly === '') {
+      finalValue = '';
+    } else {
+      // 3. 空でなければ数値に変換する
+      finalValue = parseInt(numericOnly, 10);
     }
-    const newPatterns = (order.netaChanges[productKey] || []).map((p) => (p.id === patternId ? { ...p, [field]: finalValue } : p));
-    updateOrder(order.id, { netaChanges: { ...order.netaChanges, [productKey]: newPatterns } });
-  };
+    // ※ 上限チェックのロジックは削除しました
+  }
+
+  // 4. stateを更新する
+  const newPatterns = (order.netaChanges[productKey] || []).map((p) => (p.id === patternId ? { ...p, [field]: finalValue } : p));
+  updateOrder(order.id, { netaChanges: { ...order.netaChanges, [productKey]: newPatterns } });
+};
 
   const handleNetaSelection = (productKey, patternId, netaItem, isSelected) => {
     const newPatterns = (order.netaChanges[productKey] || []).map((p) => (p.id === patternId ? { ...p, selectedNeta: { ...p.selectedNeta, [netaItem]: isSelected } } : p));
@@ -98,6 +110,17 @@ const SingleOrderSection = ({
   };
  
   const totalAmountForThisOrder = calculateOrderTotal(order);
+
+  const handleNetaChangeBlur = (productKey, patternId) => {
+  // 対象のパターンを探す
+  const pattern = (order.netaChanges[productKey] || []).find(p => p.id === patternId);
+
+  // パターンが存在し、かつその数量が空文字か0の場合
+  if (pattern && (pattern.quantity === '' || pattern.quantity === 0)) {
+    // 既存の削除関数を呼び出して、そのパターンを削除する
+    removeNetaChangePattern(productKey, patternId);
+  }
+};
 
   return (
     // 2. キャンセル済みの場合にCSSクラスを付与して見た目を変える
@@ -162,6 +185,7 @@ const SingleOrderSection = ({
             removeNetaChangePattern={removeNetaChangePattern}
             handleNetaChangeDetail={handleNetaChangeDetail}
             handleNetaSelection={handleNetaSelection}
+            handleNetaChangeBlur={handleNetaChangeBlur}
             getMaxQuantityForPattern={getMaxQuantityForPattern}
             addSideOrder={addSideOrder}
             updateSideOrderQuantity={updateSideOrderQuantity}

@@ -11,6 +11,7 @@ const OrderOptionsSection = ({
   removeNetaChangePattern,
   handleNetaChangeDetail,
   handleNetaSelection,
+  handleNetaChangeBlur,
   getMaxQuantityForPattern,
   addSideOrder,
   updateSideOrderQuantity,
@@ -86,6 +87,7 @@ const OrderOptionsSection = ({
                                   max={getMaxQuantityForPattern(product.productKey, pattern.id)}
                                   value={pattern.quantity}
                                   onChange={(e) => handleNetaChangeDetail(product.productKey, pattern.id, 'quantity', e.target.value)}
+                                  onBlur={() => handleNetaChangeBlur(product.productKey, pattern.id)}
                                   className="pattern-quantity-input"
                                 />
                                 <button type="button" onClick={() => removeNetaChangePattern(product.productKey, pattern.id)} className="remove-pattern-btn">

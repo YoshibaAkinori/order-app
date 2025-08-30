@@ -166,17 +166,18 @@ const OrderForm = () => {
   };
 
   const updateSideOrderQuantity = (orderId, productKey, quantity) => {
-    const finalQuantity = parseInt(String(quantity).replace(/[０-９]/g, char => String.fromCharCode(char.charCodeAt(0) - 0xFEE0)), 10) || 0;
-    setOrders(prevOrders => prevOrders.map(order => {
-      if (order.id === orderId) {
-        const updatedSideOrders = order.sideOrders
-          .map(item => item.productKey === productKey ? { ...item, quantity: finalQuantity } : item)
-          .filter(item => item.quantity > 0);
-        return { ...order, sideOrders: updatedSideOrders };
-      }
-      return order;
-    }));
-  };
+  const finalQuantity = parseInt(String(quantity).replace(/[０-９]/g, char => String.fromCharCode(char.charCodeAt(0) - 0xFEE0)), 10) || "";
+
+  setOrders(prevOrders => prevOrders.map(order => {
+    if (order.id === orderId) {
+      const updatedSideOrders = order.sideOrders
+        .map(item => item.productKey === productKey ? { ...item, quantity: finalQuantity } : item);
+
+      return { ...order, sideOrders: updatedSideOrders };
+    }
+    return order;
+  }));
+};
 
   const removeSideOrder = (orderId, productKey) => {
     setOrders(prevOrders => prevOrders.map(order => {
