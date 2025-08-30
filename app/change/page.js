@@ -846,8 +846,6 @@ useEffect(() => {
     receptionNumber, 
     generateOrderNumber
   ]);
-
-  const uniqueOrderDates = [...new Set(orders.map(o => o.orderDate).filter(Boolean))];
   
   if (loading) return <h4>設定データを読み込んでいます...</h4>;
   if (error) return <h4 style={{color: 'red'}}>エラー: {error}</h4>;

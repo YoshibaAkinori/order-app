@@ -189,7 +189,7 @@ const SummaryPage = () => {
   if (configError) return <h4 style={{color: 'red'}}>エラー: {configError}</h4>;
   
   return (
-    <div style={{ padding: '1rem', fontFamily: 'Arial, sans-serif' }}>
+    <div className="main-content">
       <div className="summary-header">
         <div className="summary-header-item">
           <select 

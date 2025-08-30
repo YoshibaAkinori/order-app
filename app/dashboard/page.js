@@ -183,7 +183,7 @@ const OrderListPage = () => {
   if (configLoading) return <h4>設定読み込み中...</h4>;
 
   return (
-    <div style={{ padding: '2rem' }}>
+    <div className="main-content">
       {isChangeModalOpen && (
         <div className="modal-backdrop-sidebar" onClick={closeChangeModal}>
           <div className="modal-content-sidebar open" onClick={(e) => e.stopPropagation()}>

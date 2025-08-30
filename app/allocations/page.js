@@ -211,7 +211,7 @@ const AllocationPage = () => {
   if (configError) return <h4 style={{color: 'red'}}>エラー: {configError}</h4>;
 
   return (
-    <div style={{ padding: '2rem' }}>
+    <div className="main-content">
       <h1 className="admin-header">割り当て管理 ({selectedYear}年)</h1>
       
       <div className="summary-controls">

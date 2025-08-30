@@ -61,7 +61,7 @@ const NetaChangeAdminPage = () => {
   if (configLoading) return <h4>設定読み込み中...</h4>;
 
   return (
-    <div style={{ padding: '2rem' }}>
+    <div className="main-content">
       <h1 className="admin-header">ネタ変更 管理</h1>
       
       <div className="summary-controls">

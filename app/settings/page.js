@@ -307,7 +307,7 @@ export default function ProductAdminPage() {
   };
 
   return (
-    <div style={{ padding: '2rem' }}>
+    <div className="main-content">
       <h1 className="admin-header">設定管理</h1>
 
       {isProductFormOpen && ( <ProductForm initialData={editingProduct} onSubmit={handleProductFormSubmit} onCancel={() => setIsProductFormOpen(false)} editingType={editingType} /> )}
