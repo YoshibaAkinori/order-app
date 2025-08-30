@@ -510,6 +510,56 @@ const handleOpenConfirmation = async () => {
         alert(`エラー: ${error.message}`);
       }
     };
+    /**
+    * 注文内容の整合性を検証する関数
+    * @returns {boolean} - 問題がなければtrue、あればfalseを返す
+    */
+    const validateOrderDetails = () => {
+      // --- 検証1: ネタ変更の個数が合計を超えていないかチェック ---
+      for (const order of orders) {
+        if (order.netaChanges) {
+          for (const productKey in order.netaChanges) {
+            const patterns = order.netaChanges[productKey] || [];
+            const netaChangeSum = patterns.reduce((sum, pattern) => sum + (parseInt(pattern.quantity) || 0), 0);
+            const mainItem = order.orderItems.find(item => item.productKey === productKey);
+            const mainQuantity = parseInt(mainItem?.quantity) || 0;
+
+            if (netaChangeSum > mainQuantity) {
+              const productName = mainItem?.name || `商品(${productKey})`;
+              const orderIndex = orders.findIndex(o => o.id === order.id);
+              alert(`注文 #${orderIndex + 1} の「${productName}」において、ネタ変更の合計個数（${netaChangeSum}個）が商品の注文数（${mainQuantity}個）を超えています。\n\n個数を確認してください。`);
+              return false; // 問題があったのでfalseを返して終了
+            }
+          }
+        }
+      }
+
+      // --- 検証2: 注文合計と書類合計の金額が一致しているかチェック ---
+      const activeOrders = orders.filter(o => o.orderStatus !== 'CANCELED');
+      const grandTotal = activeOrders.reduce((total, order) => total + calculateOrderTotal(order), 0);
+      const receiptsTotal = finalReceipts.reduce((total, receipt) => total + (parseFloat(receipt.amount) || 0), 0);
+
+      if (grandTotal !== receiptsTotal) {
+        const message = `全注文の合計金額 (¥${grandTotal.toLocaleString()}) と、発行される書類の合計金額 (¥${receiptsTotal.toLocaleString()}) が一致していません。\n\nこのまま登録を続けますか？`;
+        // ユーザーが「キャンセル」を押した場合は、falseを返して終了
+        if (!window.confirm(message)) {
+          return false;
+        }
+      }
+
+      // --- 全ての検証をクリア ---
+      return true; // 問題がなかったのでtrueを返す
+    };
+    const handleNewOrderConfirm = () => {
+      // 作成した検証関数を呼び出す
+      const isFormValid = validateOrderDetails();
+
+      // 検証が成功した場合（trueが返ってきた場合）のみ、handleOpenConfirmationを呼び出す
+      if (isFormValid) {
+      handleOpenConfirmation(); // ここで指定の関数を呼び出す
+    }
+  };
+
   
     if (loading) return <h4>設定データを読み込んでいます...</h4>;
     if (error) return <h4 style={{color: 'red'}}>エラー: {error}</h4>;
@@ -704,7 +754,7 @@ const handleOpenConfirmation = async () => {
               />
             </div>
             <div className="submit-container"> 
-              <button type="button" onClick={handleOpenConfirmation} className="confirm-btn"> 注文内容を確認 </button>
+              <button type="button" onClick={handleNewOrderConfirm} className="confirm-btn"> 注文内容を確認 </button>
             </div>
           </div>
         </div>

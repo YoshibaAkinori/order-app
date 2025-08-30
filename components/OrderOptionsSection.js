@@ -84,11 +84,11 @@ const OrderOptionsSection = ({
                                 <input
                                   type="number"
                                   min="1"
-                                  max={getMaxQuantityForPattern(product.productKey, pattern.id)}
-                                  value={pattern.quantity}
+                                  value={pattern.quantity === 0 ? '' : pattern.quantity}
                                   onChange={(e) => handleNetaChangeDetail(product.productKey, pattern.id, 'quantity', e.target.value)}
                                   onBlur={() => handleNetaChangeBlur(product.productKey, pattern.id)}
                                   className="pattern-quantity-input"
+                                  placeholder="0" // ★ placeholder="0" も追加
                                 />
                                 <button type="button" onClick={() => removeNetaChangePattern(product.productKey, pattern.id)} className="remove-pattern-btn">
                                   <Trash2 size={16} />

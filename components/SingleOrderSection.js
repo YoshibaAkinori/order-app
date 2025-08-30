@@ -96,7 +96,6 @@ const SingleOrderSection = ({
       // 3. 空でなければ数値に変換する
       finalValue = parseInt(numericOnly, 10);
     }
-    // ※ 上限チェックのロジックは削除しました
   }
 
   // 4. stateを更新する
