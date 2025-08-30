@@ -547,7 +547,7 @@ const handleOpenConfirmation = async () => {
               onLocationSelect={handleLocationSelect}
               allocationNumber={allocationNumber}
               isOtherSelected={allocationNumber === otherKey}
-        />
+            />
             {orders.map((order, index) => {
               const orderNumberDisplay = generateOrderNumber(order, receptionNumber, index);
               return (

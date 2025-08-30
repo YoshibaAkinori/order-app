@@ -144,7 +144,7 @@ const ConfirmationModal = ({
                       <div key={group.id} className="conf-payment-group">
                         <div className="conf-grid-item">
                           <div className="conf-label">
-                            支払グループ #{index + 1} (お支払いする注文番号: {displayOrderNumber})
+                            支払日 #{index + 1} (お支払いする注文番号: {displayOrderNumber})
                           </div>
                           <div className="conf-value-order">
                             対象注文: {targetOrderNumbers}

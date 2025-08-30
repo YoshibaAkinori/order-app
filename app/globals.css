@@ -51,6 +51,13 @@ button {
   margin-left: auto;   /* ★追加: 中央揃えのため */
   margin-right: auto;  /* ★追加: 中央揃えのため */
 }
+@media (max-width: 750px) {
+  .form-container {
+    width: 100%;     /* 幅を100%に広げる */
+    padding: 1rem;   /* 内側の余白も少し狭くして、スペースを確保 */
+    border-radius: 0; /* 角の丸みをなくす（スマホ表示で一般的） */
+  }
+}
 
 .form-header {
   display: flex;
@@ -369,6 +376,34 @@ button {
   border: 1px solid #ebccd1;
   border-radius: 4px;
   margin: 0 1rem 1rem 1rem;
+}
+
+/* ========================================
+   SingleOrderSection.js のレイアウト制御
+   ======================================== */
+
+/* 「注文内容」と「ネタ変更」を囲むラッパーのスタイル */
+.order-content-layout {
+  display: flex;
+  flex-direction: column; /* ★ 要素を縦に積む */
+  gap: 24px;             /* ★ 上下のセクション間の隙間 */
+  margin-top: 2rem;
+}
+
+/* Flexboxの子要素が、中身のサイズによって縮まなくなるのを防ぐおまじない。
+  これがはみ出し問題の根本的な解決策です。
+*/
+.order-items-section,
+.order-options-section {
+  min-width: 0; 
+}
+
+/*
+  テーブルが自身のコンテナからはみ出すのを防ぎ、
+  必要な場合のみ横スクロールバーを表示する設定。
+*/
+.order-items-container {
+  overflow-x: auto;
 }
 
 /* ========================================
@@ -2351,7 +2386,35 @@ th {
   height: calc(90vh - 100px); /* (ヘッダーの高さを引くなど、微調整が必要) */
   overflow-y: auto;
 }
+/* ========================================
+   注文一覧ページのレスポンシブ対応
+   ======================================== */
 
+/* 画面幅が960px以下になった場合に、この中のスタイルを適用 */
+@media (max-width: 960px) {
+  .list-controls {
+    /* ★ 横並びから、縦積み・逆順に変更 */
+    flex-direction: column-reverse; 
+    
+    /* ★ 子要素をコンテナの幅いっぱいに広げる */
+    align-items: stretch;
+    
+    /* ★ 縦に積んだ際の要素間の隙間 */
+    gap: 1.5rem; 
+  }
+
+  .filters,
+  .search-and-export {
+    /* ★ 各グループ内の要素の配置を調整 */
+    justify-content: flex-start; /* 左揃えにする */
+    flex-wrap: wrap; /* 中身が改行されるようにする */
+  }
+
+  /* 検索・出力グループは右揃えを維持 */
+  .search-and-export {
+    justify-content: flex-end;
+  }
+}
 /* === 共通ヘッダー === */
 .shared-header {
   position: sticky;
