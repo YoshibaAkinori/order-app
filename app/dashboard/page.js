@@ -159,7 +159,7 @@ const OrderListPage = () => {
     if (!selectedDate) { alert('日付を選択してください。'); return; }
     setIsLoading(true); 
     setError(null);
-    setSelectedRoute('');
+    //setSelectedRoute('');
     setOrders([]);
     setCurrentDate(selectedDate);
     try {
