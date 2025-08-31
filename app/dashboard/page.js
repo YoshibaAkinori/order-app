@@ -14,8 +14,8 @@ const OrderInfoCell = ({ order}) => {
       {(order.orderItems || []).map(item => {
         if (!item.quantity || item.quantity === 0) return null;
 
-        const change_patterns = item.change_patterns || [];
-        const changedQtyTotal = change_patterns.reduce((sum, p) => sum + p.quantity, 0);
+        const change_patterns = item.netaChanges || [];
+        const changedQtyTotal = change_patterns.reduce((sum, p) => sum + (p.quantity || 0), 0);
         const normal_qty = item.quantity - changedQtyTotal;
 
         return (
