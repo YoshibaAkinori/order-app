@@ -14,8 +14,8 @@ const OrderInfoCell = ({ order}) => {
       {(order.orderItems || []).map(item => {
         if (!item.quantity || item.quantity === 0) return null;
 
-        const change_patterns = item.netaChanges || [];
-        const changedQtyTotal = change_patterns.reduce((sum, p) => sum + (p.quantity || 0), 0);
+        const change_patterns = item.change_patterns || [];
+        const changedQtyTotal = change_patterns.reduce((sum, p) => sum + p.quantity, 0);
         const normal_qty = item.quantity - changedQtyTotal;
 
         return (
@@ -48,10 +48,9 @@ const OrderInfoCell = ({ order}) => {
         );
       })}
       {/* サイドオーダー */}
-      {(order.sideOrders || []).map(item => {
-        if (!item.quantity || item.quantity === 0) return null; // ★サイドオーダーも0個なら表示しない
-        return <div key={item.productKey}>{item.name} × {item.quantity}</div>
-      })}
+      {(order.sideOrders || []).map(item => (
+        <div key={item.productKey}>{item.name} × {item.quantity}</div>
+      ))}
     </div>
   );
 };
@@ -66,14 +65,14 @@ const NotesCell = ({ order, productsMaster }) => {
     notes.push(order.paymentNote);
   }
   (order.orderItems || []).forEach(item => {
-    const change_patterns = item.netaChanges || [];
+    const change_patterns = item.change_patterns || [];
     change_patterns.forEach(pattern => {
       const originalNeta = productsMaster[item.productKey]?.neta.map(n => n.name) || [];
       const removedNeta = Object.keys(pattern.selectedNeta || {})
-        .filter(netaName => pattern.selectedNeta[netaName] === true);
+                .filter(netaName => pattern.selectedNeta[netaName] === true);
       const addedNeta = pattern.to_neta || [];
       
-      if (removedNeta.length > 0 || addedNeta.length > 0) {
+      if (removedNeta.length > 0) {
         const originalSet = new Set(originalNeta);
         removedNeta.forEach(neta => originalSet.delete(neta));
         addedNeta.forEach(neta => originalSet.add(neta));
