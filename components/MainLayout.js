@@ -4,7 +4,7 @@ import { useConfiguration } from '../app/contexts/ConfigurationContext';
 import { configureAmplify } from '../utils/amplify-config';
 import SharedHeader from "./SharedHeader";
 import SidebarInfoSection from './SidebarInfoSection';
-import YearSelector from './YearSelector'; // YearSelectorをインポート
+import YearSelector from './YearSelector';
 import InstructionsModal from './InstructionsModal';
 import Link from 'next/link'; 
 import Image from 'next/image';
@@ -14,8 +14,6 @@ export default function MainLayout({ children }) {
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
   const { isLoggedIn, authLoading, logout } = useConfiguration();
   
-
-  // アプリケーションの初回ロード時に一度だけAmplifyを設定
   useEffect(() => {
     console.log('=== MainLayout useEffect実行 ===');
     try {
@@ -26,7 +24,6 @@ export default function MainLayout({ children }) {
     }
   }, []);
 
-  // 認証チェック中は何も表示しない（ちらつき防止）
   if (authLoading) {
     return null;
   }
@@ -41,10 +38,9 @@ export default function MainLayout({ children }) {
           <div className="sidebar">
             <div className="sidebar-header">
               <h3>メニュー</h3>
-              <button onClick={() => setIsSidebarOpen(false)} className="sidebar-close-btn">&times;</button>
             </div>
             
-            {/* 年選択セクション */}
+            {/* コンテンツエリアに、一番下のボタンまで含める */}
             <div className="sidebar-content">
               <div className="sidebar-year-section">
                 <label className="sidebar-year-label">年度選択</label>
@@ -59,19 +55,21 @@ export default function MainLayout({ children }) {
               <Link href="./netachange" onClick={() => setIsSidebarOpen(false)}>ネタ変更詳細</Link>
               <Link href="./settings" onClick={() => setIsSidebarOpen(false)}>設定管理</Link>
               <Link href="./Log" onClick={() => setIsSidebarOpen(false)}>変更ログ</Link>
+              
+              {/* 一番下に表示したいボタンを、コンテンツエリアの最後に配置 */}
+              <div className="sidebar-bottom-actions">
+                <button onClick={logout} className="logout-button-sidebar">ログアウト</button>
+                <a href="#" onClick={(e) => {
+                  e.preventDefault();
+                  setIsInstructionsOpen(true);
+                  setIsSidebarOpen(false);
+                  }}>
+                  説明書
+                </a>
+              </div>
             </div>
 
-              {/* 2. 一番下に固定したいボタンを新しいdiv（フッター）で囲む */}
-            <div className="sidebar-footer">
-              <button onClick={logout} className="logout-button-sidebar">ログアウト</button>
-              <a href="#" onClick={(e) => {
-                e.preventDefault();
-                setIsInstructionsOpen(true);
-                setIsSidebarOpen(false);
-                }}>
-                説明書
-              </a>
-            </div>
+            {/* ★↑ここまでが修正箇所↑★ */}
           </div>
         </>
       )}
