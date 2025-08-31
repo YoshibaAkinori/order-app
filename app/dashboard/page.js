@@ -48,9 +48,10 @@ const OrderInfoCell = ({ order}) => {
         );
       })}
       {/* サイドオーダー */}
-      {(order.sideOrders || []).map(item => (
-        <div key={item.productKey}>{item.name} × {item.quantity}</div>
-      ))}
+      {(order.sideOrders || []).map(item => {
+        if (!item.quantity || item.quantity === 0) return null; // ★サイドオーダーも0個なら表示しない
+        return <div key={item.productKey}>{item.name} × {item.quantity}</div>
+      })}
     </div>
   );
 };
