@@ -42,6 +42,9 @@ button {
   margin-right: auto;
   min-width: 800px;
 }
+.main-content--full-width {
+  max-width: none; /* 最大幅の制限をなくす */
+}
 
 .form-container {
   background-color: #ffffff;

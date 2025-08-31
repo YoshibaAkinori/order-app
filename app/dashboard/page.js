@@ -197,7 +197,7 @@ const OrderListPage = () => {
   if (configLoading) return <h4>設定読み込み中...</h4>;
 
   return (
-    <div className="main-content">
+    <div className="main-content main-content--full-width">
       {isChangeModalOpen && (
         <div className="modal-backdrop-sidebar" onClick={closeChangeModal}>
           <div className="modal-content-sidebar open" onClick={(e) => e.stopPropagation()}>
@@ -262,7 +262,6 @@ const OrderListPage = () => {
             <th>住所</th>
             <th>時間</th>
             <th>担当者</th>
-            <th>電話番号</th>
             <th>宛名</th>
             <th>注文情報</th>
             <th>備考</th>
@@ -284,7 +283,6 @@ const OrderListPage = () => {
               <td>{order.deliveryAddress}</td>
               <td>{order.deliveryTime}</td>
               <td>{order.contactName}</td>
-              <td>{order.tel}</td>
               {/* ### ▼▼▼ 変更箇所 ▼▼▼ ### */}
               <td>
                 {(order.receipts || [])
