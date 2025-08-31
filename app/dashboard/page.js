@@ -65,10 +65,11 @@ const NotesCell = ({ order, productsMaster }) => {
     notes.push(order.paymentNote);
   }
   (order.orderItems || []).forEach(item => {
-    const change_patterns = item.change_patterns || [];
+    const change_patterns = item.netaChanges || [];
     change_patterns.forEach(pattern => {
       const originalNeta = productsMaster[item.productKey]?.neta.map(n => n.name) || [];
-      const removedNeta = Object.keys(pattern.selectedNeta || {});
+      const removedNeta = Object.keys(pattern.selectedNeta || {})
+        .filter(netaName => pattern.selectedNeta[netaName] === true);
       const addedNeta = pattern.to_neta || [];
       
       if (removedNeta.length > 0 || addedNeta.length > 0) {
