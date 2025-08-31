@@ -5,11 +5,13 @@ import { configureAmplify } from '../utils/amplify-config';
 import SharedHeader from "./SharedHeader";
 import SidebarInfoSection from './SidebarInfoSection';
 import YearSelector from './YearSelector'; // YearSelectorをインポート
+import InstructionsModal from './InstructionsModal';
 import Link from 'next/link'; 
 import Image from 'next/image';
 
 export default function MainLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
   const { isLoggedIn, authLoading, logout } = useConfiguration();
   
 
@@ -43,25 +45,37 @@ export default function MainLayout({ children }) {
             </div>
             
             {/* 年選択セクション */}
-            <div className="sidebar-year-section">
-              <label className="sidebar-year-label">年度選択</label>
-              <YearSelector />
+            <div className="sidebar-content">
+              <div className="sidebar-year-section">
+                <label className="sidebar-year-label">年度選択</label>
+                <YearSelector />
+              </div>
+    
+              <Link href="/" onClick={() => setIsSidebarOpen(false)}>新規注文</Link>
+              <Link href="./change" onClick={() => setIsSidebarOpen(false)}>注文変更</Link>
+              <Link href="./dashboard" onClick={() => setIsSidebarOpen(false)}>注文一覧</Link>
+              <Link href="./allocations" onClick={() => setIsSidebarOpen(false)}>割り当て管理</Link>
+              <Link href="./netacounts" onClick={() => setIsSidebarOpen(false)}>ネタ数</Link>
+              <Link href="./netachange" onClick={() => setIsSidebarOpen(false)}>ネタ変更詳細</Link>
+              <Link href="./settings" onClick={() => setIsSidebarOpen(false)}>設定管理</Link>
+              <Link href="./Log" onClick={() => setIsSidebarOpen(false)}>変更ログ</Link>
             </div>
-            
-            <Link href="/" onClick={() => setIsSidebarOpen(false)}>新規注文</Link>
-            <Link href="./change" onClick={() => setIsSidebarOpen(false)}>注文変更</Link>
-            <Link href="./dashboard" onClick={() => setIsSidebarOpen(false)}>注文一覧</Link>
-            <Link href="./allocations" onClick={() => setIsSidebarOpen(false)}>割り当て管理</Link>
-            <Link href="./netacounts" onClick={() => setIsSidebarOpen(false)}>ネタ数</Link>
-            <Link href="./netachange" onClick={() => setIsSidebarOpen(false)}>ネタ変更詳細</Link>
-            <Link href="./settings" onClick={() => setIsSidebarOpen(false)}>設定管理</Link>
-            <Link href="./Log" onClick={() => setIsSidebarOpen(false)}>変更ログ</Link>
-            <div style={{marginTop: 'auto'}}>
+
+              {/* 2. 一番下に固定したいボタンを新しいdiv（フッター）で囲む */}
+            <div className="sidebar-footer">
               <button onClick={logout} className="logout-button-sidebar">ログアウト</button>
+              <a href="#" onClick={(e) => {
+                e.preventDefault();
+                setIsInstructionsOpen(true);
+                setIsSidebarOpen(false);
+                }}>
+                説明書
+              </a>
             </div>
           </div>
         </>
       )}
+      {isInstructionsOpen && <InstructionsModal onClose={() => setIsInstructionsOpen(false)} />}
       
       <main className="main-page-content">
         {isLoggedIn ? (
