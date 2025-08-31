@@ -152,6 +152,7 @@ const handleSearch = async () => {
     setCustomerInfo(sanitizedCustomerInfo);
     setReceptionNumber(data.receptionNumber);
     setAllocationNumber(data.allocationNumber);
+    setGlobalNotes(data.orders?.[0]?.notes || '');
 
     // まず注文データを処理
     const loadedOrders = data.orders.map((dbOrder) => {
