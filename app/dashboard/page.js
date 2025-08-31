@@ -27,6 +27,7 @@ const OrderInfoCell = ({ order}) => {
             {change_patterns.map(pattern => {
               const removedNeta = Object.keys(pattern.selectedNeta || {})
                 .filter(netaName => pattern.selectedNeta[netaName] === true);
+              const isNetaStructurallyChanged = removedNeta.length > 0;
               
               let details = [];
               if (isNetaStructurallyChanged) {
