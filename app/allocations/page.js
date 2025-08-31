@@ -287,6 +287,7 @@ const AllocationPage = () => {
                           value={assignments[prefix] || ''}
                           onChange={(e) => handleAssignmentChange(prefix, e.target.value)}
                           onClick={(e) => e.stopPropagation()}
+                          className={!assignments[prefix] ? 'unassigned' : ''}
                         >
                           <option value="">---</option>
                           {deliveryRoutes.map(r => <option key={r} value={r}>{r}</option>)}
@@ -317,6 +318,7 @@ const AllocationPage = () => {
                                         value={assignments[floorKey] || assignments[prefix] || ''}
                                         onChange={(e) => handleAssignmentChange(floorKey, e.target.value)}
                                         onClick={(e) => e.stopPropagation()}
+                                        className={!(assignments[floorKey] || assignments[prefix]) ? 'unassigned' : ''}
                                       >
                                         <option value="">---</option>
                                         {deliveryRoutes.map(r => <option key={r} value={r}>{r}</option>)}
@@ -350,6 +352,7 @@ const AllocationPage = () => {
                           <select
                             value={assignments[order.orderId] || ''}
                             onChange={(e) => handleAssignmentChange(order.orderId, e.target.value)}
+                            className={!assignments[order.orderId] ? 'unassigned' : ''}
                           >
                             <option value="">---</option>
                             {deliveryRoutes.map(r => <option key={r} value={r}>{r}</option>)}

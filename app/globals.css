@@ -2031,6 +2031,14 @@ th {
   font-size: 0.9rem;
 }
 
+.allocation-table select.unassigned {
+  border-color: #ef4444; /* 枠線を赤くする */
+  border-width: 2px;
+  background-color: #fee2e2; /* 背景を薄い赤にする */
+  outline: 2px solid #ef4444;
+  outline-offset: -2px;
+}
+
 /*ネタ数*/
 .summary-header {
   display: flex;
