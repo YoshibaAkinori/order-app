@@ -1,5 +1,3 @@
-// yoshibaakinori/order-app/order-app-ca22d44240d5d2c566e4d42c4d0e60ac644d1bf8/app/order-confirmation/[...slug]/page.js
-
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -49,7 +47,8 @@ export default function OrderConfirmationPage() {
   if (error) return <p style={{ padding: '2rem', color: 'red' }}>エラー: {error}</p>;
   if (!orderData) return <p style={{ padding: '2rem' }}>注文データが見つかりません。</p>;
 
-  const { customerInfo, orders, receipts, paymentGroups, orderType, globalNotes } = orderData;
+  const { customerInfo, orders, receipts, paymentGroups, orderType } = orderData;
+  const globalNotes = orders?.[0]?.notes;
   const SIDE_ORDERS_DB = configuration?.specialMenus || {};
 
   return (
@@ -200,7 +199,7 @@ export default function OrderConfirmationPage() {
                             </table>
                           </section>
                         )}
-                        {globalNotes && (
+                        {globalNotes && typeof globalNotes === 'string' && globalNotes.trim() !== '' &&(
                           <section className="conf-section conf-notes-details">
                             <h2 className="conf-order-title">備考</h2>
                             <p className="conf-notes-text">

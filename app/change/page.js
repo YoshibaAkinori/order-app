@@ -152,7 +152,12 @@ const handleSearch = async () => {
     setCustomerInfo(sanitizedCustomerInfo);
     setReceptionNumber(data.receptionNumber);
     setAllocationNumber(data.allocationNumber);
-    setGlobalNotes(data.orders?.[0]?.notes || '');
+    const fetchedNotes = data.orders?.[0]?.notes;
+
+// fetchedNotesが、中身のある「文字列」の場合のみstateを更新する
+    if (typeof fetchedNotes === 'string' && fetchedNotes.trim() !== '') {
+      setGlobalNotes(fetchedNotes);
+    }
 
     // まず注文データを処理
     const loadedOrders = data.orders.map((dbOrder) => {
