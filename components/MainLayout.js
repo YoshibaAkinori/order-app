@@ -58,14 +58,14 @@ export default function MainLayout({ children }) {
               
               {/* 一番下に表示したいボタンを、コンテンツエリアの最後に配置 */}
               <div className="sidebar-bottom-actions">
-                <button onClick={logout} className="logout-button-sidebar">ログアウト</button>
                 <a href="#" onClick={(e) => {
                   e.preventDefault();
                   setIsInstructionsOpen(true);
                   setIsSidebarOpen(false);
-                  }}>
+                  }} className='setting-button-sidebar'>
                   説明書
                 </a>
+                <button onClick={logout} className="logout-button-sidebar">ログアウト</button>
               </div>
             </div>
 
