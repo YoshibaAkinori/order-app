@@ -2584,13 +2584,13 @@ th {
 
 /* YearSelectorコンポーネントのスタイル */
 .year-selector-dropdown {
-  padding: 1rem;
+  padding: 1.5rem;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 1.5rem;
+  font-size: 2rem;
   background-color: white;
   min-width: 200px;
-  height: 2rem;
+  height: 2.5rem;
 
 }
 

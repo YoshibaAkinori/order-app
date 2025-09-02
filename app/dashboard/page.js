@@ -5,6 +5,7 @@ import { useOrderData } from '../contexts/OrderDataContext';
 import { searchOrders } from '../lib/orderApi';
 import ChangeOrderPage from '../change/page';
 import Link from 'next/link';
+import { Mail } from 'lucide-react';
 
 // 注文情報を整形して表示するためのヘルパーコンポーネント
 const OrderInfoCell = ({ order}) => {
@@ -170,6 +171,50 @@ const OrderListPage = () => {
     finally { setIsLoading(false); }
   };
 
+  const handleAtenaExcel = async () => {
+  if (filteredOrders.length === 0) {
+    alert('対象の注文がありません。');
+    return;
+  }
+  setIsLoading(true);
+
+  // 1. UIに表示されている注文から、領収書データだけを抽出
+  const receiptsToExport = filteredOrders.flatMap(order => 
+    (order.receipts || []).map(receipt => ({
+      recipientName: receipt.recipientName,
+      amount: receipt.amount
+    }))
+  ).filter(r => r.recipientName); // 宛名があるものだけを対象
+
+  if (receiptsToExport.length === 0) {
+    alert('書き出す宛名情報がありません。');
+    setIsLoading(false);
+    return;
+  }
+
+  try {
+    // 2. 新しいAPIエンドポイントにデータを送信
+    const blob = await exportAtenaExcel(receiptsToExport);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+
+    const today = new Date();
+    const day = today.getDate();
+
+    a.download = `領収書_${selectedDate}_${day}日ver.xlsx`; // ダウンロードするファイル名
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+
+  } catch (err) {
+    alert(`エラー: ${err.message}`);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
   const openChangeModal = (orderId) => {
     setEditingOrderId(orderId);
     setIsChangeModalOpen(true);
@@ -247,9 +292,11 @@ const OrderListPage = () => {
             <option value="">担当選択 (すべて)</option>
             {(deliveryRoutes || []).map(w => <option key={w} value={w}>{w}</option>)}
           </select>
+          <button title="全体確認メールを送信">
+            <Mail size={20} />
+          </button>
           <button>一覧Excel</button>
-          <button>ラベルExcel</button>
-          <button>宛名Excel</button>
+          <button onClick={handleAtenaExcel}>宛名Excel</button>
         </div>
       </div>
 

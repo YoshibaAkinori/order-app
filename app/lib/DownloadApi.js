@@ -46,38 +46,22 @@ const request = async (endpoint, options = {}, responseType = 'json') => {
 };
 
 // --- API関数 ---
-
 /**
- * 指定した日付と年で注文を検索する
- * @param {string} date - 日付 (YYYY/MM/DD)
- * @param {string} selectedYear - 年 (YYYY)
- * @returns {Promise<Object>} 検索結果
+ * 宛名Excelファイルをエクスポートする
+ * @param {Array<object>} receipts - エクスポートする領収書データの配列
+ * @returns {Promise<Blob>} ExcelファイルのBlobオブジェクト
  */
-export const searchOrders = (date, selectedYear) => {
-    const formattedDate = date.replaceAll('/', '-');
-    return request(`orders/search?date=${formattedDate}&year=${selectedYear}`);
-};
-
-/**
- * 新しい受付番号をサーバーから取得する
- * @param {string} allocation - 割り当て記号 (例: 'A')
- * @param {string} floor - 階数
- * @param {string} year - 年
- * @returns {Promise<Object>} 受付番号を含むオブジェクト
- */
-export const generateReceptionNumberAPI = (allocation, floor, year) => {
-    const params = new URLSearchParams({ allocation, floor, year });
-    return request(`reception-number?${params.toString()}`);
-};
-
-/**
- * 新しい注文データをサーバーに保存する
- * @param {object} orderData - 送信する注文データ全体
- * @returns {Promise<Object>} APIからの成功メッセージ
- */
-export const saveOrderAPI = (orderData) => {
-    return request('orders', {
+export const exportAtenaExcel = (receipts) => {
+    return request('export-atena-excel', {
         method: 'POST',
-        body: orderData, // オブジェクトのまま渡す
+        body: { receipts }, // オブジェクトのまま渡す
+    }, 'blob'); // ★ レスポンスタイプとして'blob'を指定
+};
+
+// ★ updateOrderAPI や cancelAllOrdersAPI も同様に追加できます
+export const updateOrderAPI = (receptionNumber, orderData) => {
+    return request(`orders/${receptionNumber}`, {
+        method: 'PUT',
+        body: orderData,
     });
 };
