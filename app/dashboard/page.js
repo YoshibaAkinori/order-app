@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useConfiguration } from '../contexts/ConfigurationContext';
 import { useOrderData } from '../contexts/OrderDataContext';
 import { searchOrders } from '../lib/orderApi';
+import { exportAtenaExcel } from '../lib/DownloadApi';
 import ChangeOrderPage from '../change/page';
 import Link from 'next/link';
 import { Mail } from 'lucide-react';
@@ -103,6 +104,7 @@ const OrderListPage = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
+  const [isWariateModalOpen, setIsWariateModalOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState(null);
   const { setOrders, setCurrentDate } = useOrderData();
   
@@ -116,6 +118,7 @@ const OrderListPage = () => {
 
   const deliveryDates = useMemo(() => (configuration?.deliveryDates || []), [configuration]);
   const deliveryRoutes = useMemo(() => (configuration?.deliveryRoutes || []), [configuration]);
+  const deliveryWariate = useMemo(() => (configuration?.deliveryWariate || []), [configuration]);
   
   const productsMaster = useMemo(() => apiData?.masters?.products || {}, [apiData]);
 
@@ -171,49 +174,69 @@ const OrderListPage = () => {
     finally { setIsLoading(false); }
   };
 
-  const handleAtenaExcel = async () => {
-  if (filteredOrders.length === 0) {
-    alert('対象の注文がありません。');
-    return;
-  }
-  setIsLoading(true);
+  const handleAtenaExcel = () => {
+    if (filteredOrders.length === 0) {
+      alert('対象の注文がありません。');
+      return;
+    }
+    setIsWariateModalOpen(true); // ★ モーダルを開くだけにする
+  };
+  const handleWariateSelectAndExport = async (warihuriName) => {
+    setIsWariateModalOpen(false); // モーダルを閉じる
+    setIsLoading(true);
 
-  // 1. UIに表示されている注文から、領収書データだけを抽出
-  const receiptsToExport = filteredOrders.flatMap(order => 
-    (order.receipts || []).map(receipt => ({
-      recipientName: receipt.recipientName,
-      amount: receipt.amount
-    }))
-  ).filter(r => r.recipientName); // 宛名があるものだけを対象
+    const selectedDay = selectedDate.split('/')[2];
 
-  if (receiptsToExport.length === 0) {
-    alert('書き出す宛名情報がありません。');
-    setIsLoading(false);
-    return;
-  }
+    const receiptsToExport = filteredOrders.flatMap(order => 
+      (order.receipts || []).map(receipt => ({
+        recipientName: receipt.recipientName,
+        amount: receipt.amount,
+        orderDate: selectedDate,
+        // 絞り込みのために、receiptの元データも一時的に含めておく
+        issueDate: receipt.issueDate,
+        documentType: receipt.documentType
+      }))
+    )
+    .filter(receipt => {
+      // 2. documentTypeが「領収書」のものだけに絞り込む
+      if (receipt.documentType !== '領収書') {
+        return false;
+      }
+      
+      // 3. issueDate（注文番号）の先頭2文字が、選択した日付の「日」と一致するかチェック
+      //    (issueDateが存在しない場合は除外)
+      if (!receipt.issueDate || typeof receipt.issueDate !== 'string') {
+        return false;
+      }
+      const issueDay = receipt.issueDate.substring(0, 2);
+      return issueDay === selectedDay;
+    });
 
-  try {
-    // 2. 新しいAPIエンドポイントにデータを送信
-    const blob = await exportAtenaExcel(receiptsToExport);
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    // ★★★ ここまでが修正箇所です ★★★
 
-    const today = new Date();
-    const day = today.getDate();
+    if (receiptsToExport.length === 0) {
+      alert('書き出す宛名情報がありません。');
+      setIsLoading(false);
+      return;
+    }
 
-    a.download = `領収書_${selectedDate}_${day}日ver.xlsx`; // ダウンロードするファイル名
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
+    try {
+      // APIに渡すデータからは、絞り込みに使った余分な情報は除外しておく
+      const cleanReceipts = receiptsToExport.map(({ recipientName, amount, orderDate}) => ({
+        recipientName,
+        amount,
+        orderDate
+      }));
 
-  } catch (err) {
-    alert(`エラー: ${err.message}`);
-  } finally {
-    setIsLoading(false);
-  }
-};
+      const result = await exportAtenaExcel(cleanReceipts, warihuriName, selectedYear);
+  
+      // 成功メッセージを表示
+      alert(`ファイル "${result.filename}" のダウンロードが完了しました！`);
+  
+    } catch (err) {
+      alert(`エラー: ${err.message}`);
+    }
+  };
 
   const openChangeModal = (orderId) => {
     setEditingOrderId(orderId);
@@ -248,6 +271,27 @@ const OrderListPage = () => {
           <div className="modal-content-sidebar open" onClick={(e) => e.stopPropagation()}>
             <button onClick={closeChangeModal} className="close-button" style={{position: 'absolute', top: '1rem', right: '1rem'}}>&times;</button>
             <ChangeOrderPage initialOrderId={editingOrderId} isModalMode={true} onClose={closeChangeModal} />
+          </div>
+        </div>
+      )}
+      {isWariateModalOpen && (
+        <div className="settings-modal-backdrop" onClick={() => setIsWariateModalOpen(false)}>
+          <div className="settings-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="settings-modal-header">
+              <h2>宛名Excelのテンプレートを選択</h2>
+              <button onClick={() => setIsWariateModalOpen(false)} className="settings-modal-close-btn">&times;</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {(deliveryWariate || []).map(wariate => (
+                <button 
+                  key={wariate.name} 
+                  onClick={() => handleWariateSelectAndExport(wariate.name)}
+                  className="copy-button" // 見た目のために既存のクラスを流用
+                >
+                  {wariate.name} 用テンプレートで作成
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
