@@ -341,9 +341,10 @@ const OrderListPage = () => {
       )}
       {isWariateModalOpen && (
         <div className="settings-modal-backdrop" onClick={() => setIsWariateModalOpen(false)}>
-          <div className="settings-modal-content" onClick={e => e.stopPropagation()}>
+          {/* ↓↓↓ settings-modal-content の max-width を直接指定します ↓↓↓ */}
+          <div className="settings-modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
             <div className="settings-modal-header">
-              <h2>宛名Excelのテンプレートを選択</h2>
+              <h2>作成する領収書を選択</h2>
               <button onClick={() => setIsWariateModalOpen(false)} className="settings-modal-close-btn">&times;</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -351,9 +352,9 @@ const OrderListPage = () => {
                 <button 
                   key={wariate.name} 
                   onClick={() => handleWariateSelectAndExport(wariate.name)}
-                  className="copy-button" // 見た目のために既存のクラスを流用
+                  className="copy-button"
                 >
-                  {wariate.name} 用テンプレートで作成
+                  {wariate.name} 用で作成
                 </button>
               ))}
             </div>
