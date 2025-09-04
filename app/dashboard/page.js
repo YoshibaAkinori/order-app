@@ -111,6 +111,9 @@ const OrderListPage = () => {
   const [editingOrderId, setEditingOrderId] = useState(null);
   const {setOrders, setCurrentDate } = useOrderData();
   
+  const handlePrint = () => {
+    window.print();
+  };
 
   useEffect(() => {
     // このコンポーネントが画面から消える時に実行されるクリーンアップ関数
@@ -127,11 +130,19 @@ const OrderListPage = () => {
 
   const processedOrders = useMemo(() => {
     if (!apiData || !apiData.orders) return [];
-    const ordersWithNotes = apiData.orders.map(o => ({
-      ...o,
-      paymentNote: '',
-      displayOrderTotal: o.orderTotal,
-    }));
+    
+    const ordersWithNotes = apiData.orders.map(o => {
+      // 通常商品とサイドメニューの数量を合計
+      const totalQuantity = (o.orderItems || []).reduce((sum, item) => sum + (item.quantity || 0), 0) + 
+                              (o.sideOrders || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+      return {
+        ...o,
+        paymentNote: '', 
+        displayOrderTotal: o.orderTotal,
+        totalQuantity: totalQuantity, // 計算した合計数量を注文オブジェクトに追加
+      }
+    });
     const ordersMap = new Map(ordersWithNotes.map(o => [o.orderId, o]));
     const allPaymentGroups = apiData.orders.flatMap(o => o.paymentGroups || []);
     const seenGroupIds = new Set();
@@ -407,6 +418,7 @@ const OrderListPage = () => {
           </button>
           <button onClick={handleIchiranExcel}>一覧Excel</button>
           <button onClick={handleAtenaExcel}>宛名Excel</button>
+          <button onClick={handlePrint}>印刷</button>
         </div>
       </div>
 
@@ -424,7 +436,8 @@ const OrderListPage = () => {
             <th>備考</th>
             <th>支払金額</th>
             <th>割り当て</th>
-            <th className="px-4 py-2">PDF出力</th>
+            <th>合計数</th>
+            <th className="no-print">PDF出力</th> 
           </tr>
         </thead>
         <tbody>
@@ -463,7 +476,10 @@ const OrderListPage = () => {
               <td><NotesCell order={order} productsMaster={productsMaster} /></td>
               <td>¥{(order.displayOrderTotal || 0).toLocaleString()}</td>
               <td>{order.assignedRoute}</td>
-              <td className="border px-4 py-2 text-center">
+              <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                {order.totalQuantity}
+              </td>
+              <td className="border px-4 py-2 text-center no-print">
                 {hasEmail ? (
                   <Link
                     href={`/order-confirmation/${order.receptionNumber}/${selectedYear}`}

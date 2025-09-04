@@ -1,0 +1,54 @@
+/* app/print.css */
+
+@media print {
+  /* 印刷時に非表示にしたい要素を指定 */
+  .shared-header,       /* 上部ヘッダー */
+  .main-layout > nav,   /* 左側のサイドバー */
+  .list-controls,       /* 検索バーやExcelボタンなどの操作エリア */
+  .no-print {           /* ★★★ ここを追加：no-printクラスを持つ要素を非表示 ★★★ */
+    display: none !important;
+  }
+
+  /* 印刷用にメインコンテンツのレイアウトを調整 */
+  .main-layout > main {
+    margin-left: 0 !important;
+    padding: 1cm !important; /* 印刷の余白 */
+  }
+
+  .main-content {
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* テーブルの見た目を印刷用に調整 */
+  .order-table {
+    font-size: 9pt;
+    width: 100%; /* ★★★ テーブル全体が100%幅になるように ★★★ */
+    border-collapse: collapse;
+  }
+
+  .order-table th,
+  .order-table td {
+    border: 1px solid #ccc;
+    padding: 4px;
+    vertical-align: top; /* ★★★ セルの内容が上揃えになるように ★★★ */
+  }
+
+  /* 個別の列幅を調整（PDF出力がなくなった分を配分） */
+  .order-table th:nth-child(1), .order-table td:nth-child(1) { width: 5%; } /* 編集 */
+  .order-table th:nth-child(2), .order-table td:nth-child(2) { width: 8%; } /* 時間 */
+  .order-table th:nth-child(3), .order-table td:nth-child(3) { width: 12%; } /* 顧客名 */
+  .order-table th:nth-child(4), .order-table td:nth-child(4) { width: 12%; } /* 宛名 */
+  .order-table th:nth-child(5), .order-table td:nth-child(5) { width: 6%; } /* 合計数 */
+  .order-table th:nth-child(6), .order-table td:nth-child(6) { width: 25%; } /* 注文内容 */
+  .order-table th:nth-child(7), .order-table td:nth-child(7) { width: 20%; } /* 備考 */
+  .order-table th:nth-child(8), .order-table td:nth-child(8) { width: 8%; } /* 支払い金額 */
+  .order-table th:nth-child(9), .order-table td:nth-child(9) { width: 4%; } /* 状況 */
+  /* PDF出力の列はno-printで非表示になるため、ここには含めない */
+
+  /* ページ区切りを調整（テーブルの行が途中で切れないように） */
+  .order-table tbody tr {
+    page-break-inside: avoid;
+  }
+}

@@ -3,6 +3,7 @@ import "./globals.css";
 import { ConfigurationProvider } from "./contexts/ConfigurationContext";
 import { OrderDataProvider } from "./contexts/OrderDataContext";
 import MainLayout from "../components/MainLayout";
+import "./print.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
