@@ -3,7 +3,8 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useConfiguration } from '../contexts/ConfigurationContext';
 import { useOrderData } from '../contexts/OrderDataContext';
 import { searchOrders } from '../lib/orderApi';
-import { exportAtenaExcel } from '../lib/DownloadApi';
+import { exportAtenaExcel, exportIchiranExcel } from '../lib/DownloadApi';
+import IchiranExcelModal from '../../components/IchiranExcelModal';
 import ChangeOrderPage from '../change/page';
 import Link from 'next/link';
 import { Mail } from 'lucide-react';
@@ -105,8 +106,10 @@ const OrderListPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
   const [isWariateModalOpen, setIsWariateModalOpen] = useState(false);
+  const [isIchiranExcelModalOpen, setIsIchiranExcelModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState(null);
-  const { setOrders, setCurrentDate } = useOrderData();
+  const {setOrders, setCurrentDate } = useOrderData();
   
 
   useEffect(() => {
@@ -181,9 +184,58 @@ const OrderListPage = () => {
     }
     setIsWariateModalOpen(true); // ★ モーダルを開くだけにする
   };
+
+  /**
+   * 「一覧Excel」ボタンがクリックされたときの処理
+   */
+  const handleIchiranExcel = () => {
+    if (filteredOrders.length === 0) {
+      alert('対象の注文がありません。');
+      return;
+    }
+    setIsIchiranExcelModalOpen(true); // モーダルを開く
+  };
+
+  /**
+   * モーダルでルートが選択され、「作成」ボタンが押されたときの処理
+   * @param {string[]} selectedRoutes - 選択された配達ルート名の配列
+   */
+  const handleExportIchiranExcel = async (selectedRoutes) => {
+    setIsIchiranExcelModalOpen(false); // モーダルを閉じる
+    
+    if (selectedRoutes.length === 0) {
+      alert('ルートが選択されていません。');
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      // 選択されたルートに基づいて、表示中の注文データをフィルタリング
+      const ordersToExport = filteredOrders.filter(order => 
+        selectedRoutes.includes(order.assignedRoute)
+      );
+
+      if (ordersToExport.length === 0) {
+        alert('選択されたルートに該当する注文がありませんでした。');
+        return;
+      }
+      
+      // APIを呼び出し、Excelファイルを作成・ダウンロード
+      const result = await exportIchiranExcel(ordersToExport, selectedRoutes, selectedYear, selectedDate);
+      
+      alert(`ファイル "${result.filename}" のダウンロードが完了しました！`);
+      setIsExporting(false);
+
+    } catch (err) {
+      alert(`エラー: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleWariateSelectAndExport = async (warihuriName) => {
     setIsWariateModalOpen(false); // モーダルを閉じる
-    setIsLoading(true);
 
     const selectedDay = selectedDate.split('/')[2];
 
@@ -212,14 +264,14 @@ const OrderListPage = () => {
       return issueDay === selectedDay;
     });
 
-    // ★★★ ここまでが修正箇所です ★★★
 
     if (receiptsToExport.length === 0) {
       alert('書き出す宛名情報がありません。');
       setIsLoading(false);
       return;
     }
-
+    
+    setIsExporting(true);
     try {
       // APIに渡すデータからは、絞り込みに使った余分な情報は除外しておく
       const cleanReceipts = receiptsToExport.map(({ recipientName, amount, orderDate}) => ({
@@ -232,6 +284,7 @@ const OrderListPage = () => {
   
       // 成功メッセージを表示
       alert(`ファイル "${result.filename}" のダウンロードが完了しました！`);
+      setIsExporting(false);
   
     } catch (err) {
       alert(`エラー: ${err.message}`);
@@ -273,6 +326,18 @@ const OrderListPage = () => {
             <ChangeOrderPage initialOrderId={editingOrderId} isModalMode={true} onClose={closeChangeModal} />
           </div>
         </div>
+      )}
+      {isExporting && (
+        <div className="loading-overlay">
+          通信中...
+        </div>
+      )}
+      {isIchiranExcelModalOpen && (
+        <IchiranExcelModal
+          allRoutes={deliveryRoutes}
+          onClose={() => setIsIchiranExcelModalOpen(false)}
+          onSubmit={handleExportIchiranExcel}
+        />
       )}
       {isWariateModalOpen && (
         <div className="settings-modal-backdrop" onClick={() => setIsWariateModalOpen(false)}>
@@ -339,7 +404,7 @@ const OrderListPage = () => {
           <button title="全体確認メールを送信">
             <Mail size={20} />
           </button>
-          <button>一覧Excel</button>
+          <button onClick={handleIchiranExcel}>一覧Excel</button>
           <button onClick={handleAtenaExcel}>宛名Excel</button>
         </div>
       </div>

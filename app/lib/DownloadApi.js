@@ -167,3 +167,47 @@ export const exportAtenaExcel = async (receipts, warihuri, year) => {
     throw new Error(`Excelファイルのエクスポートに失敗しました: ${error.message}`);
   }
 };
+
+/**
+ * 一覧Excelファイルをエクスポートして自動ダウンロードする
+ * @param {Array<object>} orders - エクスポートする注文データの配列
+ * @param {string[]} routes - 選択された配達ルート名の配列
+ * @param {string} year - 選択された年
+ * @param {string} date - 選択された日付 (例: '2024/12/31')
+ * @returns {Promise<{filename: string, fileSize: number}>} ファイル情報
+ */
+export const exportIchiranExcel = async (orders, routes, year, date) => { // ★ date を引数に追加
+  try {
+    console.log('一覧Excelエクスポートを開始...');
+    
+    // APIを呼び出してレスポンスを取得
+    const response = await request('/upload/export-ichiran-excel', {
+      method: 'POST',
+      body: {
+        orders,
+        routes,
+        year,
+        date
+      },
+    }, 'json');
+
+    // S3経由でのダウンロード処理は exportAtenaExcel と共通
+    if (response.downloadUrl) {
+      console.log('S3からファイルを取得中...');
+      const blob = await fetchFileFromUrl(response.downloadUrl);
+      const filename = response.filename;
+      const fileSize = response.fileSize;
+      
+      console.log(`ファイルサイズ: ${fileSize} bytes`);
+      downloadFile(blob, filename);
+
+      return { filename, fileSize };
+    } else {
+      throw new Error('APIレスポンスが期待される形式ではありません');
+    }
+
+  } catch (error) {
+    console.error('一覧Excelエクスポートエラー:', error);
+    throw new Error(`一覧Excelファイルのエクスポートに失敗しました: ${error.message}`);
+  }
+};
