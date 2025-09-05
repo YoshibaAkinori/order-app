@@ -8,11 +8,16 @@ import YearSelector from './YearSelector';
 import InstructionsModal from './InstructionsModal';
 import Link from 'next/link'; 
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+import { useInbox } from '../app/contexts/InboxContext';
 
 export default function MainLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
   const { isLoggedIn, authLoading, logout } = useConfiguration();
+
+  const { fetchUnreadCount } = useInbox();
+  const pathname = usePathname();
   
   useEffect(() => {
     console.log('=== MainLayout useEffect実行 ===');
@@ -23,6 +28,12 @@ export default function MainLayout({ children }) {
       console.error('❌ configureAmplify呼び出し失敗:', error);
     }
   }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) { // ログインしている時だけ実行
+      fetchUnreadCount();
+    }
+  }, [pathname, isLoggedIn, fetchUnreadCount]);
 
   if (authLoading) {
     return null;

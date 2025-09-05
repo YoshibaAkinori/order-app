@@ -1,14 +1,25 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import NotificationBell from './NotificationBell'; 
+import { useInbox } from '../app/contexts/InboxContext';
+
 import Image from 'next/image';
+import { useRouter } from 'next/navigation'; // ★ 1. useRouterをインポート
+import { Mail } from 'lucide-react';
 
 const SharedHeader = ({ onMenuClick }) => {
+  const router = useRouter();
+  const { unreadCount } = useInbox(); // ★ 2. Contextから未readCountを取得
+
+  const handleInboxClick = () => {
+    router.push('/inbox'); 
+  };
+
   return (
     <header className="shared-header">
       <div className="logo-container">
           <Image 
-            src="/logo.png" // publicフォルダからの相対パス
+            src="/logo.png"
             alt="Matsue-order-appLogo" 
             width={60} 
             height={40} 
@@ -17,6 +28,10 @@ const SharedHeader = ({ onMenuClick }) => {
         </div>
       <div className="header-left">
         <NotificationBell />
+        <button title="受信トレイを開く" onClick={handleInboxClick} className="mail-button">
+          {unreadCount > 0 && <span className="mail-badge">{unreadCount}</span>}
+          <Mail size={28} />
+        </button>
       </div>
       <div className="header-title">
         <h1>松栄寿し注文管理システム</h1>

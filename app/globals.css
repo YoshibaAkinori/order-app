@@ -2766,7 +2766,7 @@ th {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 1.5rem; /* 要素間の適度な間隔 */
+  gap: 0.75rem; /* アイコン間のスペースを少し調整 */
 }
 
 /* 通知ベル全体のコンテナ */
@@ -2824,6 +2824,63 @@ th {
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
+
+
+/* メールアイコンボタンのスタイル */
+.mail-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  color: #4a5568; /* 他のアイコンと色を合わせる */
+  padding: 0.5rem;
+  border-radius: 9999px; /* 円形にする */
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem; /* 幅を確保 */
+  height: 2.5rem; /* 高さを確保 */
+}
+
+.mail-button:hover {
+  background-color: #f0f0f0; /* ホバー時の背景色 */
+  transform: scale(1.1);
+}
+.mail-badge {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  color: white;
+  
+  /* ★★★ ここからが修正箇所です ★★★ */
+  width: 22px;        /* 円の直径を少し大きく */
+  height: 22px;       /* 円の直径を少し大きく */
+  font-size: 12px;
+  
+  /* flexboxを使って中身を完全に中央揃えにする */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* ★★★ ここまでが修正箇所です ★★★ */
+  
+  border-radius: 50%; /* 正円にする */
+  font-weight: 600;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
+
+  /* アニメーションは一旦コメントアウト */
+  /* animation: pulse 2s infinite; */
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3); }
+  50% { transform: scale(1.1); box-shadow: 0 4px 8px rgba(255, 107, 107, 0.5); }
+  100% { transform: scale(1); box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3); }
+}
+
 
 
 /* ドロップダウン */

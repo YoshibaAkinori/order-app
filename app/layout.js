@@ -3,6 +3,7 @@ import "./globals.css";
 import { ConfigurationProvider } from "./contexts/ConfigurationContext";
 import { OrderDataProvider } from "./contexts/OrderDataContext";
 import MainLayout from "../components/MainLayout";
+import { InboxProvider } from './contexts/InboxContext';
 import "./print.css";
 
 const geistSans = Geist({
@@ -23,14 +24,14 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ja">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body>
         <ConfigurationProvider>
           <OrderDataProvider>
-            <MainLayout>
-              {children}
-            </MainLayout>
+            <InboxProvider> 
+              <MainLayout>
+                {children}
+              </MainLayout>
+            </InboxProvider>
           </OrderDataProvider>
         </ConfigurationProvider>
       </body>
