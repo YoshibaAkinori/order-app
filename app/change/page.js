@@ -5,6 +5,7 @@ import { Search, Send, Plus, X as CloseIcon, Trash2 } from 'lucide-react';
 import CustomerInfoSection from '../../components/CustomerInfoSection';
 import SingleOrderSection from '../../components/SingleOrderSection';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import { useSearchParams } from 'next/navigation'; 
 
 import { 
   searchOrderAPI, 
@@ -22,7 +23,7 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
   const deliveryDates = useMemo(() => (configuration?.deliveryDates || []), [configuration]);
   const deliveryTimes = useMemo(() => (configuration?.deliveryTimes || []), [configuration]);
   const [globalNotes, setGlobalNotes] = useState('');
-
+  const searchParams = useSearchParams();
   
 
   const initialCustomerInfo = {
@@ -74,6 +75,16 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
       handleSearch();
     }
   }, [initialOrderId]);
+
+  useEffect(() => {
+    const receptionNumberFromUrl = searchParams.get('receptionNumber');
+    const idToUse = receptionNumberFromUrl || initialOrderId;
+
+    // 検索IDとして設定する
+    if (idToUse) {
+      setSearchId(idToUse);
+    }
+  }, [searchParams, initialOrderId]);
 
   const getDocumentType = useCallback((paymentMethod) => {
     if (['代金引換'].includes(paymentMethod)) return '領収書';

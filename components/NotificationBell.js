@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, MailWarning, MailCheck, AlertTriangle } from 'lucide-react'; // ★ AlertTriangleを追加
-import { getNotificationsAPI } from '../app/lib/notificationApi';
+import { getNotificationsAPI, markNotificationAsReadAPI } from '../app/lib/notificationApi';
 import { useOrderData } from '../app/contexts/OrderDataContext'; // ★ Contextをインポート
 import Link from 'next/link';
 
@@ -70,6 +70,25 @@ const NotificationBell = () => {
       prevUnreadCountRef.current = unreadCount;
     }, [unreadCount]); // unreadCountが変わるたびに実行
 
+    const handleLinkClick = async (notification) => {
+        // もし未読なら、既読にするAPIを呼び出し、フロントの状態も更新
+        if (!notification.isRead) {
+            try {
+                await markNotificationAsReadAPI(notification.notificationId);
+                setNotifications(prev =>
+                    prev.map(n =>
+                        n.notificationId === notification.notificationId ? { ...n, isRead: true } : n
+                    )
+                );
+            } catch (error) {
+                console.error("Failed to mark notification as read:", error);
+                // エラーが起きてもナビゲーションは妨げない
+            }
+        }
+        // ドロップダウンを閉じる
+        setIsOpen(false);
+    };
+
     return (
         <div className="notification-bell-container">
             <button 
@@ -86,39 +105,44 @@ const NotificationBell = () => {
                 <div className="notification-dropdown-header">通知</div>
                 <ul className="notification-list">
                     {notifications.length > 0 ? (
-                        notifications.map(n => (
-                            <li key={n.notificationId} className={`notification-item ${n.isRead ? 'read' : ''}`}>
-                                <div className="notification-icon">
-                                    {/* アイコンの出し分けは変更なし */}
-                                    {n.type === 'BOUNCE' ? <MailWarning color="red" size={20} /> :
-                                     n.type === 'UNASSIGNED_ORDER' ? <AlertTriangle color="#f97316" size={20} /> :
-                                     <MailCheck color="green" size={20} />}
-                                </div>
-                                <div className="notification-content">
-                                    <p className="notification-subject">{n.subject}</p>
-                                    <p className="notification-message">{n.message}</p>
-                                    
-                                    {/* ★ リンクのラッパーと閉じるボタンを削除し、リンクのみにする */}
-                                    {n.type === 'UNASSIGNED_ORDER' ? (
-                                        <Link 
-                                          href={`/allocations?date=${currentDate.replaceAll('/', '-')}`} 
-                                          onClick={() => setIsOpen(false)}
-                                          className="notification-link"
-                                        >
-                                            割り当てを確認 →
-                                        </Link>
-                                    ) : (
-                                        <Link 
-                                          href="/change" 
-                                          onClick={() => setIsOpen(false)}
-                                          className="notification-link"
-                                        >
-                                            注文を確認 →
-                                        </Link>
-                                    )}
-                                </div>
-                            </li>
-                        ))
+                        notifications.map(n => {
+                            // ★★★【ここを修正】★★★
+                            // subjectから解析するのではなく、n.receptionNumberを直接使う
+                            const receptionNumber = n.receptionNumber; 
+                            const orderLink = receptionNumber ? `/change?receptionNumber=${receptionNumber}` : '/change';
+
+                            return (
+                                <li key={n.notificationId} className={`notification-item ${n.isRead ? 'read' : ''}`}>
+                                    <div className="notification-icon">
+                                        {n.type === 'BOUNCE' ? <MailWarning color="red" size={20} /> :
+                                         n.type === 'UNASSIGNED_ORDER' ? <AlertTriangle color="#f97316" size={20} /> :
+                                         <MailCheck color="green" size={20} />}
+                                    </div>
+                                    <div className="notification-content">
+                                        <p className="notification-subject">{n.subject}</p>
+                                        <p className="notification-message">{n.message}</p>
+                                        
+                                        {n.type === 'UNASSIGNED_ORDER' ? (
+                                            <Link 
+                                              href={`/allocations?date=${currentDate.replaceAll('/', '-')}`} 
+                                              onClick={() => handleLinkClick(n)}
+                                              className="notification-link"
+                                            >
+                                                割り当てを確認 →
+                                            </Link>
+                                        ) : (
+                                            <Link 
+                                              href={orderLink}
+                                              onClick={() => handleLinkClick(n)}
+                                              className="notification-link"
+                                            >
+                                                注文を確認 →
+                                            </Link>
+                                        )}
+                                    </div>
+                                </li>
+                            )
+                        })
                     ) : (
                         <li className="notification-item-empty">通知はありません</li>
                     )}

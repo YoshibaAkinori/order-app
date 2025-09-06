@@ -20,5 +20,9 @@ const request = async (endpoint, options = {}) => {
 
 export const getNotificationsAPI = () => request('notifications');
 
-// 将来的に「既読にする」機能を実装する場合
-// export const markAsReadAPI = (notificationId) => request(`notifications/${notificationId}/read`, { method: 'POST' });
+export const markNotificationAsReadAPI = async (notificationId) => {
+    // PUT /notifications/{notificationId}/read を呼び出す
+    return request(`notifications/${notificationId}/read`, {
+        method: 'PUT',
+    });
+};
