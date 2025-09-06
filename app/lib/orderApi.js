@@ -81,3 +81,10 @@ export const saveOrderAPI = (orderData) => {
         body: orderData, // オブジェクトのまま渡す
     });
 };
+
+export const sendBatchConfirmationAPI = async (orders, orderDate, year) => {
+    return request('send-batch-confirmation', {
+        method: 'POST',
+        body: { orders, orderDate, year }, // ★ bodyにyearを追加
+    });
+};

@@ -62,3 +62,14 @@ export const markThreadAsReadAPI = async (threadId) => {
         method: 'PUT',
     });
 };
+
+/**
+ * 受信トレイのデータを初期化するAPIを呼び出す
+ * @returns {Promise<any>}
+ */
+export const initializeInboxAPI = async () => {
+    // POST /initialize-inbox などを呼び出す（エンドポイント名はAPI Gatewayの設定に合わせる）
+    return request('initialize-inbox', {
+        method: 'POST',
+    });
+};

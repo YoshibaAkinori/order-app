@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useConfiguration } from '../contexts/ConfigurationContext';
 import { useOrderData } from '../contexts/OrderDataContext';
-import { searchOrders } from '../lib/orderApi';
+import { searchOrders, sendBatchConfirmationAPI } from '../lib/orderApi';
 import { exportAtenaExcel, exportIchiranExcel } from '../lib/DownloadApi';
 import IchiranExcelModal from '../../components/IchiranExcelModal';
 import ChangeOrderPage from '../change/page';
@@ -302,6 +302,47 @@ const OrderListPage = () => {
     }
   };
 
+  const handleSendBatchEmail = async () => {
+        if (filteredOrders.length === 0) {
+            alert('対象の注文がありません。');
+            return;
+        }
+
+        // 1. メールアドレスが存在する注文だけを抽出
+        const ordersToSend = filteredOrders
+            .filter(order => order.customerInfo && order.customerInfo.email)
+            .map(order => ({
+                receptionNumber: order.receptionNumber,
+                year: selectedYear, // 現在選択中の年
+            }));
+
+        if (ordersToSend.length === 0) {
+            alert('メールアドレスが登録されている注文が一覧にありません。');
+            return;
+        }
+
+        if (!confirm(`${ordersToSend.length}件のお客様に最終確認メールを送信します。よろしいですか？`)) {
+            return;
+        }
+        
+        setIsLoading(true);
+        try {
+            // 2. 新しいAPIを呼び出す
+            const result = await sendBatchConfirmationAPI(ordersToSend, selectedDate, selectedYear);
+            
+            const successCount = result.summary.filter(r => r.status === 'success').length;
+            const failedCount = result.summary.filter(r => r.status === 'failed').length;
+            const skippedCount = result.summary.filter(r => r.status === 'skipped').length;
+
+            alert(`一括送信が完了しました。\n成功: ${successCount}件\n失敗: ${failedCount}件\nスキップ(送信済み): ${skippedCount}件`);
+
+        } catch (err) {
+            alert(`エラーが発生しました: ${err.message}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
   const openChangeModal = (orderId) => {
     setEditingOrderId(orderId);
     setIsChangeModalOpen(true);
@@ -413,7 +454,7 @@ const OrderListPage = () => {
             <option value="">担当選択 (すべて)</option>
             {(deliveryRoutes || []).map(w => <option key={w} value={w}>{w}</option>)}
           </select>
-          <button title="全体確認メールを送信">
+          <button title="最終確認メール" onClick={handleSendBatchEmail}>
             <Mail size={20} />
           </button>
           <button onClick={handleIchiranExcel}>一覧Excel</button>
