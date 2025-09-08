@@ -5,7 +5,6 @@ import { configureAmplify } from '../utils/amplify-config';
 import SharedHeader from "./SharedHeader";
 import SidebarInfoSection from './SidebarInfoSection';
 import YearSelector from './YearSelector';
-import InstructionsModal from './InstructionsModal';
 import Link from 'next/link'; 
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -13,7 +12,6 @@ import { useInbox } from '../app/contexts/InboxContext';
 
 export default function MainLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
   const { isLoggedIn, authLoading, logout } = useConfiguration();
 
   const { fetchUnreadCount } = useInbox();
@@ -69,13 +67,16 @@ export default function MainLayout({ children }) {
               
               {/* 一番下に表示したいボタンを、コンテンツエリアの最後に配置 */}
               <div className="sidebar-bottom-actions">
-                <a href="#" onClick={(e) => {
-                  e.preventDefault();
-                  setIsInstructionsOpen(true);
-                  setIsSidebarOpen(false);
-                  }} className='setting-button-sidebar'>
+                {/* 👇 aタグをLinkコンポーネントに変更し、新しいタブで開くように設定 */}
+                <Link 
+                  href="/instructions" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className='setting-button-sidebar'
+                  onClick={() => setIsSidebarOpen(false)}
+                >
                   説明書
-                </a>
+                </Link>
                 <button onClick={logout} className="logout-button-sidebar">ログアウト</button>
               </div>
             </div>
@@ -84,7 +85,6 @@ export default function MainLayout({ children }) {
           </div>
         </>
       )}
-      {isInstructionsOpen && <InstructionsModal onClose={() => setIsInstructionsOpen(false)} />}
       
       <main className="main-page-content">
         {isLoggedIn ? (
