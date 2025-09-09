@@ -5,7 +5,7 @@ import { Send, Plus, X as CloseIcon, Trash2 } from 'lucide-react';
 import CustomerInfoSection from '../components/CustomerInfoSection';
 import SingleOrderSection from '../components/SingleOrderSection';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { generateReceptionNumberAPI, saveOrderAPI } from './lib/orderApi';
+import * as orderApi from './lib/orderApi';
 
 const OrderForm = () => {
   const { configuration, loading, error, selectedYear, changeYear } = useConfiguration();
@@ -435,7 +435,7 @@ const handleOpenConfirmation = async () => {
 
     try {
       // APIライブラリの関数を呼び出す
-      const data = await generateReceptionNumberAPI(allocationNumber, customerInfo.floorNumber, selectedYear);
+      const data = await orderApi.generateReceptionNumberAPI(allocationNumber, customerInfo.floorNumber, selectedYear);
       const newReceptionNumber = data.receptionNumber;
       setReceptionNumber(newReceptionNumber); 
       
@@ -498,7 +498,7 @@ const handleOpenConfirmation = async () => {
 
       try {
         // APIライブラリの関数を呼び出す
-        await saveOrderAPI(finalData);
+        await orderApi.saveOrderAPI(finalData);
         
         if (isConfirmationOpen) setIsConfirmationOpen(false);
         setConfirmedData(null); 
@@ -506,8 +506,15 @@ const handleOpenConfirmation = async () => {
         resetForm();
 
       } catch (error) {
-        console.error('注文の送信中にエラーが発生しました:', error);
-        alert(`エラー: ${error.message}`);
+      // ★ APIから重複エラーが返ってきた場合の処理
+        if (error.name === 'ReceptionNumberConflictError') {
+          alert(`他端末と注文が重複したため、処理を中断しました。\nお手数ですが、再度注文内容を確認ボタンを押してください。`);
+          setIsConfirmationOpen(false); 
+        } else {
+          // その他の通常エラー
+          console.error('注文の送信中にエラーが発生しました:', error);
+          alert(`エラー: ${error.message}`);
+        }
       }
     };
     /**

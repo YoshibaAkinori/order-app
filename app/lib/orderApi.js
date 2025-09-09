@@ -7,42 +7,36 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
  * @param {string} responseType - 期待するレスポンスの形式 ('json' or 'blob')
  * @returns {Promise<any>} APIからのレスポンス
  */
-const request = async (endpoint, options = {}, responseType = 'json') => {
-    const url = `${BASE_URL}/${endpoint}`;
+const request = async (endpoint, options = {}) => {
+  const url = `${BASE_URL}/${endpoint}`;
+  const config = {
+    method: options.method || 'GET',
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
+  };
+  if (options.body) {
+    config.body = JSON.stringify(options.body);
+  }
 
-    const config = {
-        method: options.method || 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        },
-        ...options,
-    };
+  const response = await fetch(url, config);
+  const responseData = await response.json().catch(() => ({}));
 
-    // bodyが存在する場合は自動でJSON文字列に変換
-    if (config.body) {
-        config.body = JSON.stringify(config.body);
+  if (!response.ok) {
+    // ▼▼▼【ここからが修正箇所】▼▼▼
+    // ★ サーバーから409 Conflictが返ってきた場合の特別処理
+    if (response.status === 409) {
+      const error = new Error(responseData.message || '受付番号が重複しました。');
+      error.name = 'ReceptionNumberConflictError'; // ★ カスタムエラー名を設定
+      error.newReceptionNumber = responseData.newReceptionNumber; // ★ 新しい番号をエラーオブジェクトに格納
+      throw error;
     }
+    // ▲▲▲【修正ここまで】▲▲▲
 
-    try {
-        const response = await fetch(url, config);
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'APIからのエラー応答がJSON形式ではありません。' }));
-            throw new Error(errorData.message || 'APIリクエストに失敗しました。');
-        }
+    // 通常のエラー処理
+    throw new Error(responseData.message || 'APIリクエストに失敗しました。');
+  }
 
-        // 期待するレスポンスの形式に応じて処理を分岐
-        if (responseType === 'blob') {
-            return response.blob();
-        }
-        // デフォルトはJSON
-        return response.json();
-
-    } catch (error) {
-        console.error('API Request Error:', error);
-        throw error; // エラーを再スローして呼び出し元でキャッチできるようにする
-    }
+  return responseData;
 };
 
 // --- API関数 ---

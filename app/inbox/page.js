@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from 'react'; // useMemo をインポート
+import React, { useState, useEffect, useMemo } from 'react';
 import { getEmailThreads, sendReplyAPI, markThreadAsReadAPI, initializeInboxAPI } from '../lib/inboxApi';
 import './inbox.css';
 
@@ -19,9 +19,10 @@ export default function InboxPage() {
     const [error, setError] = useState(null);
     const [replyBody, setReplyBody] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [currentView, setCurrentView] = useState('inbox');
 
-    // ★★★ 1. 現在表示しているトレイを管理するstateを追加 ★★★
-    const [currentView, setCurrentView] = useState('inbox'); // 'inbox', 'confirmation', 'sent'
+    // ★★★ 1. 返信フォームの表示状態を管理するstateを追加 ★★★
+    const [isComposing, setIsComposing] = useState(false);
 
     // 初期データ取得
     useEffect(() => {
@@ -30,7 +31,8 @@ export default function InboxPage() {
 
     const fetchThreads = async () => {
         setLoading(true);
-        setSelectedThread(null); // 更新時は選択を解除
+        setSelectedThread(null);
+        setIsComposing(false); // ★★★ 更新時は返信フォームを閉じる
         try {
             const data = await getEmailThreads();
             setThreads(data);
@@ -41,48 +43,37 @@ export default function InboxPage() {
         }
     };
 
-    // ★★★ 2. スレッドを3つのカテゴリに分類する ★★★
-    // threads または currentView が変更された時だけ再計算される
+    // スレッドを3つのカテゴリに分類
     const { inboxThreads, confirmationThreads, sentThreads } = useMemo(() => {
-        // 受信トレイ：相手からのメッセージが含まれるスレッドすべて
         const inbox = threads.filter(thread =>
             thread.messages.some(m => !m.direction.startsWith('SENT'))
         );
-
-        // 最終確認トレイ：最終確認メールが含まれるスレッドすべて
         const confirmation = threads.filter(thread =>
             thread.messages.some(m => m.direction === 'SENT_CONFIRMATION')
         );
-
-        // 送信済みトレイ：「通常の送信」があり、かつ「最終確認」ではないスレッド
         const sent = threads.filter(thread => {
             const hasRegularSent = thread.messages.some(m => m.direction === 'SENT');
             const hasConfirmation = thread.messages.some(m => m.direction === 'SENT_CONFIRMATION');
             return hasRegularSent && !hasConfirmation;
         });
-
-        return { inboxThreads: inbox, sentThreads: sent, confirmationThreads: confirmation };
-    }, [threads]);
+        return { 
+        inboxThreads: inbox, 
+        sentThreads: sent, 
+        confirmationThreads: confirmation 
+    };
+}, [threads]);
 
     const [isInitializing, setIsInitializing] = useState(false);
 
-    // ★★★【ここから追加】★★★
     const handleInitializeInbox = async () => {
-        const isConfirmed = window.confirm(
-            "本当によろしいですか？\n受信トレイと通知のすべてのデータが完全に削除されます。この操作は元に戻せません。"
-        );
-
-        if (!isConfirmed) {
+        if (!window.confirm("本当によろしいですか？\n受信トレイと通知のすべてのデータが完全に削除されます。この操作は元に戻せません。")) {
             return;
         }
-
         setIsInitializing(true);
         try {
             const result = await initializeInboxAPI();
-
             alert(result.message);
-            await fetchThreads(); // リストを再読み込み
-
+            await fetchThreads();
         } catch (err) {
             alert(`初期化に失敗しました: ${err.message}`);
         } finally {
@@ -90,8 +81,6 @@ export default function InboxPage() {
         }
     };
 
-
-    // 表示するスレッドを現在のビューに応じて切り替える（変更なし）
     const displayedThreads = useMemo(() => {
         if (currentView === 'inbox') return inboxThreads;
         if (currentView === 'confirmation') return confirmationThreads;
@@ -99,56 +88,52 @@ export default function InboxPage() {
         return [];
     }, [currentView, inboxThreads, confirmationThreads, sentThreads]);
 
+    // ★★★ 2. スレッド選択時の処理を簡略化 ★★★
+    // 返信フォームの準備ロジックを削除し、スレッド表示と既読処理に専念させる
+    const handleThreadSelect = async (thread) => {
+        setSelectedThread(thread);
+        setIsComposing(false); // スレッドを切り替えたら返信フォームは閉じる
+        setReplyBody('');      // 返信内容もクリア
 
-// ★★★ 2. スレッドが選択された時の処理を新しい関数にまとめる ★★★
-const handleThreadSelect = async (thread) => { // ★ asyncを追加
-    setSelectedThread(thread);
-    // もしスレッドが未読なら、既読にするAPIを呼び出す
-    if (!thread.isRead) {
-        try {
-            await markThreadAsReadAPI(thread.threadId);
-            
-            // フロントエンドの表示も即座に更新
-            setThreads(prevThreads => 
-                prevThreads.map(t => 
-                    t.threadId === thread.threadId ? { ...t, isRead: true } : t
-                )
-            );
-
-        } catch (err) {
-            console.error("Failed to mark thread as read:", err);
+        if (!thread.isRead) {
+            try {
+                await markThreadAsReadAPI(thread.threadId);
+                setThreads(prevThreads =>
+                    prevThreads.map(t =>
+                        t.threadId === thread.threadId ? { ...t, isRead: true } : t
+                    )
+                );
+            } catch (err) {
+                console.error("Failed to mark thread as read:", err);
+            }
         }
-    }
+    };
 
-    // スレッドの最後のメッセージを取得
-    const lastMessage = thread.messages[thread.messages.length - 1];
-    
-    // ★★★【ここを修正】★★★
-    // 過去の引用部分を削除し、最新のメッセージだけを抽出する
-    const bodyLines = (lastMessage.bodyText || '').split('\n');
-    let newTextLines = [];
-    for (const line of bodyLines) {
-        // 引用行や署名の区切り線が見つかったら、そこでループを止める
-        if (line.trim().startsWith('>') || line.trim().startsWith('---') || line.trim().startsWith('***')) {
-            break;
+    // ★★★ 3. 「メールを作成」ボタンが押された時の新しい関数 ★★★
+    // ここで初めて返信フォームの準備を行う
+    const handleStartComposition = () => {
+        if (!selectedThread) return;
+
+        const lastMessage = selectedThread.messages[selectedThread.messages.length - 1];
+        const bodyLines = (lastMessage.bodyText || '').split('\n');
+        let newTextLines = [];
+        for (const line of bodyLines) {
+            if (line.trim().startsWith('>') || line.trim().startsWith('---') || line.trim().startsWith('***')) {
+                break;
+            }
+            newTextLines.push(line);
         }
-        newTextLines.push(line);
-    }
-    const latestMessageOnly = newTextLines.join('\n').trim();
-    // ★★★【修正ここまで】★★★
+        const latestMessageOnly = newTextLines.join('\n').trim();
 
-    // 引用文を作成
-    const quoteHeader = `\n\n\n> ${new Date(lastMessage.receivedAt).toLocaleString('ja-JP')}、${lastMessage.fromAddress}さんのメッセージ:\n>`;
-    // 抽出した最新メッセージだけを引用する
-    const quotedBody = latestMessageOnly.split('\n').join('\n> ');
+        const quoteHeader = `\n\n\n> ${new Date(lastMessage.receivedAt).toLocaleString('ja-JP')}、${lastMessage.fromAddress}さんのメッセージ:\n>`;
+        const quotedBody = latestMessageOnly.split('\n').join('\n> ');
+        const initialReplyText = `\n\n${EMAIL_FOOTER}${quoteHeader}${quotedBody}`;
+        
+        setReplyBody(initialReplyText);
+        setIsComposing(true); // 返信フォームを表示する
+    };
 
-    // 返信の初期テキストを生成（カーソル用の改行 + フッター + 引用文）
-    const initialReplyText = `\n\n${EMAIL_FOOTER}${quoteHeader}${quotedBody}`;
-    
-    setReplyBody(initialReplyText);
-};
-
-    // 返信送信処理（変更なし）
+    // 返信送信処理
     const handleSendReply = async () => {
         if (!selectedThread || !replyBody.trim() || isSending) return;
         const recipient = selectedThread.participants.find(p => p && !p.includes('support.h-matsue.com'));
@@ -168,6 +153,7 @@ const handleThreadSelect = async (thread) => { // ★ asyncを追加
             await sendReplyAPI(replyData);
             alert('返信を送信しました。');
             setReplyBody('');
+            setIsComposing(false); // 送信後はフォームを閉じる
             await fetchThreads();
         } catch (err) {
             alert(`返信の送信に失敗しました: ${err.message}`);
@@ -184,8 +170,8 @@ const handleThreadSelect = async (thread) => { // ★ asyncを追加
             <div className="thread-list">
                 <div className="inbox-header">
                     <h2>受信トレイ</h2>
-                    <button 
-                        className="initialize-button" 
+                    <button
+                        className="initialize-button"
                         onClick={handleInitializeInbox}
                         disabled={isInitializing}
                     >
@@ -197,7 +183,7 @@ const handleThreadSelect = async (thread) => { // ★ asyncを追加
                     <button onClick={() => setCurrentView('confirmation')} className={currentView === 'confirmation' ? 'active' : ''}>最終確認</button>
                     <button onClick={() => setCurrentView('sent')} className={currentView === 'sent' ? 'active' : ''}>送信済み</button>
                 </div>
-                
+
                 {displayedThreads.map(thread => (
                     <div
                         key={thread.threadId}
@@ -214,7 +200,15 @@ const handleThreadSelect = async (thread) => { // ★ asyncを追加
             <div className="message-view">
                 {selectedThread ? (
                     <>
-                        <h3>{selectedThread.subject}</h3>
+                        <div className="message-view-header">
+                            <h3>{selectedThread.subject}</h3>
+                            {/* 作成中でなく、かつ返信可能なトレイにいる場合のみボタンを表示 */}
+                            {!isComposing && (currentView === 'inbox' || currentView === 'confirmation' || currentView === 'sent') && (
+                                <button className="compose-button" onClick={handleStartComposition}>
+                                    メールを作成
+                                </button>
+                            )}
+                        </div>
                         <div className="message-container">
                             {selectedThread.messages.map(msg => (
                                 <div key={msg.emailId} className={`message-bubble ${msg.direction.startsWith('SENT') ? 'sent' : 'received'}`}>
@@ -226,8 +220,8 @@ const handleThreadSelect = async (thread) => { // ★ asyncを追加
                                 </div>
                             ))}
                         </div>
-                        {/* 返信フォームは受信トレイと最終確認トレイでのみ表示 */}
-                        {(currentView === 'inbox' || currentView === 'confirmation') && (
+                        {/* ★★★ 5. 返信フォームの表示条件を isComposing state に変更 ★★★ */}
+                        {isComposing && (
                             <div className="reply-form">
                                 <textarea
                                     placeholder="返信を入力..."
