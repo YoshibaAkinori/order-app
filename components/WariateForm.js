@@ -45,14 +45,14 @@ const WariateForm = ({ initialData, onSubmit, onCancel }) => {
     <div className={styles.modalBackdrop}>
       <div className={styles.modalContent}>
         <form onSubmit={handleSubmit}>
-          <h3>{initialData ? '割り当てを編集' : '新しい割り当てを追加'}</h3>
+          <h3>{initialData ? '割り振りを編集' : '新しい割り振りを追加'}</h3>
           <div className={styles.netaInputGroup}>
-            <label>割り当て名</label>
+            <label>割り振り名</label>
             <input name="name" value={formData.name} onChange={handleChange} required />
           </div>
 
           <div className={styles.formGroup}>
-            <label>担当する割り振りを選択</label>
+            <label>担当する割り当てを選択</label>
             <div className={styles.netaCheckboxContainer}>
               {deliveryRoutes.map((route, index) => (
                 <div key={index} className={styles.checkboxItem}>

@@ -17,7 +17,7 @@ export default function DeliveryRoutesModal({ deliveryRoutes = [], onUpdate }) {
 
   return (
     <>
-      <h2>割り振り担当の管理</h2>
+      <h2>割り当て担当の管理</h2>
       <div className="list-edit-form">
         <input
           name="newRoute"

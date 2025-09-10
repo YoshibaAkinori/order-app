@@ -227,11 +227,11 @@ export default function ProductAdminPage() {
           return (
             <>
               <div className="admin-controls-container" style={{marginBottom: '1rem'}}>
-                <h2>割り当ての管理</h2>
-                <button onClick={handleAddNewWariate}>+ 新しい割り当てを追加</button>
+                <h2>割り振りの管理</h2>
+                <button onClick={handleAddNewWariate}>+ 新しい割り振りを追加</button>
               </div>
               <table className='mastatable'>
-                <thead><tr><th>割り当て名</th><th>担当する割り振り</th><th>操作</th></tr></thead>
+                <thead><tr><th>割り振り名</th><th>担当する割り当て</th><th>操作</th></tr></thead>
                 <tbody>
                   {(configuration?.deliveryWariate || []).map((wariate, index) => (
                     <tr key={index}>
@@ -253,8 +253,8 @@ export default function ProductAdminPage() {
         return (
             <>
               <div className="admin-controls-container" style={{marginBottom: '1rem'}}>
-                <h2>割り当てアルファベット</h2>
-                <button onClick={handleAddNewAllocation}>+ 新しい割り当てを追加</button>
+                <h2>住所アルファベット</h2>
+                <button onClick={handleAddNewAllocation}>+ 新しい住所を追加</button>
               </div>
               <table className='mastatable'>
                 <thead><tr><th>記号</th><th>住所</th><th>操作</th></tr></thead>
@@ -354,15 +354,15 @@ export default function ProductAdminPage() {
                     <p>その他の注文や特別メニューを設定します。</p>
                   </div>
                   <div className="settings-card color-group-2" onClick={() => setOpenModal('deliveryRoutes')}>
-                    <h3>割り振り管理</h3>
+                    <h3>割り当て管理</h3>
                     <p>配達担当の名称を設定します。</p>
                   </div>
                   <div className="settings-card color-group-2" onClick={() => setOpenModal('deliveryWariate')}>
-                    <h3>割り当て管理</h3>
+                    <h3>割り振り管理</h3>
                     <p>割り振り担当がどの配達先を担当するかを設定します。</p>
                   </div>
                   <div className="settings-card color-group-2" onClick={() => setOpenModal('allocationMaster')}>
-                    <h3>割り当て番号管理</h3>
+                    <h3>住所番号管理</h3>
                     <p>受付番号に使われる記号と住所の対応を設定します。</p>
                   </div>
                   <div className="settings-card color-group-3" onClick={() => setOpenModal('netaMaster')}>
