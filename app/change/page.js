@@ -86,11 +86,11 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
     }
   }, [searchParams, initialOrderId]);
 
-  const getDocumentType = useCallback((paymentMethod) => {
-    if (['代金引換'].includes(paymentMethod)) return '領収書';
-    if (['後日振込(請求書払い)'].includes(paymentMethod)) return '請求書';
+  const getDocumentType = (paymentMethod) => {
+    if (['現金'].includes(paymentMethod)) return '領収書';
+    if (['請求書払い'].includes(paymentMethod)) return '請求書';
     return '';
-  }, []);
+  };
 
   const generateOrderNumber = useCallback((order, receptionNum, index) => {
     if (!receptionNum || receptionNum === 'エラー' || !order.orderDate) {
@@ -948,8 +948,8 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
                     <div className="payment-info-field"> <label className="payment-info-label"> 支払い方法 <span className="required-mark">*</span> </label>
                       <select name="paymentMethod" value={customerInfo.paymentMethod} onChange={handleCustomerInfoChange} className="payment-info-select">
                         <option value="">選択してください</option>
-                        <option value="領収書">領収書</option>
-                        <option value="請求書">請求書</option>
+                        <option value="現金">代金引換</option>
+                        <option value="請求書払い">後日振込(請求書払い)</option>
                       </select>
                     </div>
                     <div className="payment-info-field"> <label className="payment-info-label"> 領収書・請求書の宛名（自動作成用） </label> <input type="text" name="invoiceName" value={customerInfo.invoiceName} onChange={handleCustomerInfoChange} className="payment-info-input" placeholder="株式会社○○○" /> </div>
