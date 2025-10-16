@@ -1,4 +1,39 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+/**
+ * 汎用的なAPIリクエスト関数
+ */
+const request = async (endpoint, options = {}) => {
+  const url = `${BASE_URL}/${endpoint}`;
+  const config = {
+    method: options.method || 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    ...options,
+  };
+
+  if (options.body) {
+    config.body = JSON.stringify(options.body);
+  }
+
+  const response = await fetch(url, config);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'APIリクエストに失敗しました。');
+  }
+  
+  // No Content (204) の場合はJSONをパースしようとしない
+  if (response.status === 204) {
+    return;
+  }
+  
+  return response.json();
+};
+// ★★★ ここまでが追加部分です ★★★
+
 /**
  * 指定された年の設定を更新または新規作成する
  * @param {string} year - 設定年 (例: "2025")
