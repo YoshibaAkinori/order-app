@@ -21,8 +21,14 @@ const request = async (endpoint, options = {}) => {
 export const getNotificationsAPI = () => request('notifications');
 
 export const markNotificationAsReadAPI = async (notificationId) => {
-    // PUT /notifications/{notificationId}/read を呼び出す
     return request(`notifications/${notificationId}/read`, {
         method: 'PUT',
+    });
+};
+
+// ★★★ 追加: 通知を削除するAPI ★★★
+export const deleteNotificationAPI = async (notificationId) => {
+    return request(`notifications/${notificationId}`, {
+        method: 'DELETE',
     });
 };

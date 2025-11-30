@@ -15,28 +15,28 @@ const OrderForm = () => {
   const ALLOCATION_MASTER = useMemo(() => (configuration?.allocationMaster || {}), [configuration]);
   const deliveryDates = useMemo(() => (configuration?.deliveryDates || []), [configuration]);
   const deliveryTimes = useMemo(() => (configuration?.deliveryTimes || []), [configuration]);
-  
+
   const initialCustomerInfo = {
     contactName: '', email: '', fax: '', tel: '', companyName: '',
     paymentMethod: '', invoiceName: '', address: '', floorNumber: '',
     useCombinedPayment: false,
   };
-  
+
 
   // createNewOrderはPRODUCTSに依存するため、useMemoでPRODUCTSが更新されるたびに再生成
   const createNewOrder = useMemo(() => {
     return () => ({
-      id: Date.now(), orderDate: '', orderTime: '', deliveryAddress: '', deliveryMethod: '',isSameAddress: true,
+      id: Date.now(), orderDate: '', orderTime: '', deliveryAddress: '', deliveryMethod: '', isSameAddress: true,
       hasNetaChange: false,
-      netaChangeDetails: '', 
+      netaChangeDetails: '',
       netaChanges: {},
       sideOrders: [],
-      orderItems: Object.keys(PRODUCTS).map(key => ({ 
-        productKey: key, 
-        name: PRODUCTS[key].name, 
-        unitPrice: PRODUCTS[key].price, 
-        quantity: 0, 
-        notes: '' 
+      orderItems: Object.keys(PRODUCTS).map(key => ({
+        productKey: key,
+        name: PRODUCTS[key].name,
+        unitPrice: PRODUCTS[key].price,
+        quantity: 0,
+        notes: ''
       }))
     });
   }, [PRODUCTS]);
@@ -51,12 +51,12 @@ const OrderForm = () => {
   const [paymentGroups, setPaymentGroups] = useState([]);
   const [isReceiptDetailsOpen, setIsReceiptDetailsOpen] = useState(false);
   const [manualReceipts, setManualReceipts] = useState([]);
-  const [globalNotes, setGlobalNotes] = useState(''); 
+  const [globalNotes, setGlobalNotes] = useState('');
   const [confirmedData, setConfirmedData] = useState(null);
 
 
-  
- useEffect(() => {
+
+  useEffect(() => {
     if (configuration && orders.length === 0) {
       setOrders([createNewOrder()]);
     }
@@ -88,10 +88,10 @@ const OrderForm = () => {
 
   }, [orders]);
 
-    const otherKey = useMemo(() => {
-      if (!ALLOCATION_MASTER) return null;
+  const otherKey = useMemo(() => {
+    if (!ALLOCATION_MASTER) return null;
     // allocationMasterの中から、値が「その他」である項目のキーを探す
-      return Object.keys(ALLOCATION_MASTER).find(key => 
+    return Object.keys(ALLOCATION_MASTER).find(key =>
       ALLOCATION_MASTER[key].address === 'その他'
     );
   }, [ALLOCATION_MASTER]);
@@ -109,14 +109,14 @@ const OrderForm = () => {
     setReceptionNumber('');
     setGlobalNotes('');
     window.scrollTo({
-    top: 0,
-    left: 0,
-    behavior: 'smooth'
-  });
+      top: 0,
+      left: 0,
+      behavior: 'smooth'
+    });
   };
 
-  
-  
+
+
   const handleCustomerInfoChange = (e) => {
     const { name, value, type, checked } = e.target;
     setCustomerInfo(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
@@ -134,7 +134,7 @@ const OrderForm = () => {
   const deleteOrder = useCallback((orderId) => {
     setOrders(prev => prev.filter(o => o.id !== orderId));
   }, []);
-  
+
   const calculateOrderTotal = (order) => {
     const mainTotal = (order.orderItems || []).reduce((total, item) => total + ((parseFloat(item.unitPrice) || 0) * (parseInt(item.quantity) || 0)), 0);
     const sideTotal = (order.sideOrders || []).reduce((total, item) => {
@@ -166,18 +166,18 @@ const OrderForm = () => {
   };
 
   const updateSideOrderQuantity = (orderId, productKey, quantity) => {
-  const finalQuantity = parseInt(String(quantity).replace(/[０-９]/g, char => String.fromCharCode(char.charCodeAt(0) - 0xFEE0)), 10) || "";
+    const finalQuantity = parseInt(String(quantity).replace(/[０-９]/g, char => String.fromCharCode(char.charCodeAt(0) - 0xFEE0)), 10) || "";
 
-  setOrders(prevOrders => prevOrders.map(order => {
-    if (order.id === orderId) {
-      const updatedSideOrders = order.sideOrders
-        .map(item => item.productKey === productKey ? { ...item, quantity: finalQuantity } : item);
+    setOrders(prevOrders => prevOrders.map(order => {
+      if (order.id === orderId) {
+        const updatedSideOrders = order.sideOrders
+          .map(item => item.productKey === productKey ? { ...item, quantity: finalQuantity } : item);
 
-      return { ...order, sideOrders: updatedSideOrders };
-    }
-    return order;
-  }));
-};
+        return { ...order, sideOrders: updatedSideOrders };
+      }
+      return order;
+    }));
+  };
 
   const removeSideOrder = (orderId, productKey) => {
     setOrders(prevOrders => prevOrders.map(order => {
@@ -188,11 +188,11 @@ const OrderForm = () => {
       return order;
     }));
   };
-  
+
   const addPaymentGroup = () => {
     const newGroup = { id: Date.now(), paymentDate: '', checkedOrderIds: {} };
     setPaymentGroups(prev => [...prev, newGroup]);
-    setIsReceiptDetailsOpen(true); 
+    setIsReceiptDetailsOpen(true);
   };
   const removePaymentGroup = (groupId) => {
     setPaymentGroups(prev => prev.filter(group => group.id !== groupId));
@@ -202,21 +202,21 @@ const OrderForm = () => {
   const updatePaymentGroup = (groupId, field, value) => {
     // 支払いグループの更新
     setPaymentGroups(prev => prev.map(group => group.id === groupId ? { ...group, [field]: value } : group));
-    
+
     // 支払日が変更された場合、対応する領収書の発行日も自動更新
     if (field === 'paymentDate') {
       // 対応する注文を検索（valueはorder.id文字列）
       const correspondingOrder = orders.find(o => o.id === parseInt(value, 10));
-      
+
       // 領収書の発行日を更新
       setManualReceipts(prev => prev.map(receipt => {
         // このグループに関連する領収書で、手動編集されていない場合のみ更新
         if (receipt.groupId === groupId && !receipt.isIssueDateManuallyEdited) {
           return {
             ...receipt,
-            issueDate: (correspondingOrder && correspondingOrder.orderDate) 
-                       ? correspondingOrder.orderDate 
-                       : ''
+            issueDate: (correspondingOrder && correspondingOrder.orderDate)
+              ? correspondingOrder.orderDate
+              : ''
           };
         }
         return receipt;
@@ -228,11 +228,11 @@ const OrderForm = () => {
     setPaymentGroups(prevGroups => prevGroups.map(group => {
       if (group.id === groupId) {
         const newCheckedOrderIds = { ...group.checkedOrderIds };
-        if (newCheckedOrderIds[orderId]) { 
-          delete newCheckedOrderIds[orderId]; 
-          } else { 
-            newCheckedOrderIds[orderId] = true; 
-          }
+        if (newCheckedOrderIds[orderId]) {
+          delete newCheckedOrderIds[orderId];
+        } else {
+          newCheckedOrderIds[orderId] = true;
+        }
         return { ...group, checkedOrderIds: newCheckedOrderIds };
       }
       return group;
@@ -248,7 +248,7 @@ const OrderForm = () => {
     });
   }, [paymentGroups, orders, calculateOrderTotal]);
 
-  
+
 
   useEffect(() => {
     // customerInfoがまだ読み込まれていない場合は何もしない
@@ -258,7 +258,7 @@ const OrderForm = () => {
     if (paymentGroups.length === 0) {
       const purelyManualReceipts = manualReceipts.filter(r => !r.groupId);
       if (manualReceipts.length !== purelyManualReceipts.length) {
-          setManualReceipts(purelyManualReceipts);
+        setManualReceipts(purelyManualReceipts);
       }
       return;
     }
@@ -282,11 +282,11 @@ const OrderForm = () => {
         return {
           ...existingReceipt,
           // 金額は手動編集されていない場合のみ更新
-          amount: existingReceipt.isAmountManuallyEdited 
-                  ? existingReceipt.amount 
-                  : group.total,
+          amount: existingReceipt.isAmountManuallyEdited
+            ? existingReceipt.amount
+            : group.total,
           // 発行日は手動編集されている場合は既存値を保持、そうでなければ自動設定
-          issueDate: existingReceipt.isIssueDateManuallyEdited 
+          issueDate: existingReceipt.isIssueDateManuallyEdited
             ? existingReceipt.issueDate
             : ((group.paymentDate) // group.paymentDateはorder.idなので、そのまま使う
               ? group.paymentDate
@@ -311,17 +311,17 @@ const OrderForm = () => {
     const newFinalReceipts = [...autoGeneratedReceipts, ...purelyManualReceipts];
 
     // 5. 変更があった場合のみ更新（無限ループを防ぐため、より厳密な比較）
-    const hasChanged = 
+    const hasChanged =
       manualReceipts.length !== newFinalReceipts.length ||
       manualReceipts.some((receipt, index) => {
         const newReceipt = newFinalReceipts[index];
-        return !newReceipt || 
-               receipt.id !== newReceipt.id ||
-               receipt.documentType !== newReceipt.documentType ||
-               receipt.issueDate !== newReceipt.issueDate ||
-               receipt.recipientName !== newReceipt.recipientName ||
-               receipt.amount !== newReceipt.amount ||
-               receipt.groupId !== newReceipt.groupId;
+        return !newReceipt ||
+          receipt.id !== newReceipt.id ||
+          receipt.documentType !== newReceipt.documentType ||
+          receipt.issueDate !== newReceipt.issueDate ||
+          receipt.recipientName !== newReceipt.recipientName ||
+          receipt.amount !== newReceipt.amount ||
+          receipt.groupId !== newReceipt.groupId;
       });
 
     if (hasChanged) {
@@ -329,8 +329,8 @@ const OrderForm = () => {
     }
 
   }, [paymentGroupsWithTotals, customerInfo.paymentMethod, customerInfo.invoiceName, orders]);
-  
-  
+
+
   const customerFullAddress = useMemo(() => {
     if (!customerInfo.address) return '';
     return customerInfo.floorNumber
@@ -339,93 +339,93 @@ const OrderForm = () => {
   }, [customerInfo.address, customerInfo.floorNumber]);
 
   const handleLocationSelect = useCallback((prefix) => {
-  setAllocationNumber(prefix);
-  
-  // ★★★ 「その他」のキーと比較する形に修正 ★★★
-  if (prefix && prefix !== otherKey) {
-    const allocationData = ALLOCATION_MASTER[prefix];
-    setCustomerInfo(prev => ({
-      ...prev,
-      address: allocationData?.address || '',
-      floorNumber: '',
-    }));
-  } else {
-    // ★★★ 「その他」が選択されたら、住所は空にして手入力できるようにする ★★★
-    setCustomerInfo(prev => ({
-      ...prev,
-      address: '', 
-      floorNumber: '',
-    }));
-  }
-}, [ALLOCATION_MASTER, otherKey]);
+    setAllocationNumber(prefix);
 
-  
-  
- 
+    // ★★★ 「その他」のキーと比較する形に修正 ★★★
+    if (prefix && prefix !== otherKey) {
+      const allocationData = ALLOCATION_MASTER[prefix];
+      setCustomerInfo(prev => ({
+        ...prev,
+        address: allocationData?.address || '',
+        floorNumber: '',
+      }));
+    } else {
+      // ★★★ 「その他」が選択されたら、住所は空にして手入力できるようにする ★★★
+      setCustomerInfo(prev => ({
+        ...prev,
+        address: '',
+        floorNumber: '',
+      }));
+    }
+  }, [ALLOCATION_MASTER, otherKey]);
+
+
+
+
   const handleToggleReceiptDetails = () => setIsReceiptDetailsOpen(prev => !prev);
   const addReceipt = () => {
     const newReceipt = { id: Date.now(), issueDate: '', recipientName: '', amount: '', documentType: '領収書' };
     setManualReceipts(prev => [...prev, newReceipt]);
   };
   const removeReceipt = (receiptId) => setManualReceipts(prev => prev.filter(r => r.id !== receiptId));
-  
+
   const updateReceipt = (receiptId, field, value) => {
     setManualReceipts(prev => prev.map(r => {
       if (r.id === receiptId) {
         const updatedReceipt = { ...r, [field]: value };
-        
+
         // 金額が変更された場合は、手動編集フラグを立てる
         if (field === 'amount') {
           updatedReceipt.isAmountManuallyEdited = true;
         }
-        
+
         // 発行日が手動で変更された場合は、手動編集フラグを立てる
         if (field === 'issueDate') {
           updatedReceipt.isIssueDateManuallyEdited = true;
         }
-        
+
         return updatedReceipt;
       }
       return r;
     }));
   };
-  
+
   const autoGeneratedReceipts = useMemo(() => {
     const docType = getDocumentType(customerInfo.paymentMethod);
     if (!isPaymentOptionsOpen) {
-        if (!customerInfo.paymentMethod || !customerInfo.invoiceName) return [];
-        return orders.map(order => ({
-            id: order.id,
-            documentType: docType || '(種別未定)',
-            issueDate: order.orderDate,
-            recipientName: customerInfo.invoiceName,
-            amount: calculateOrderTotal(order)
-        }));
+      if (!customerInfo.paymentMethod || !customerInfo.invoiceName) return [];
+      return orders.map(order => ({
+        id: order.id,
+        documentType: docType || '(種別未定)',
+        issueDate: order.orderDate,
+        recipientName: customerInfo.invoiceName,
+        amount: calculateOrderTotal(order)
+      }));
     }
     return [];
   }, [orders, customerInfo.paymentMethod, customerInfo.invoiceName, isPaymentOptionsOpen, calculateOrderTotal, getDocumentType]);
-  
+
   const finalReceipts = manualReceipts.length > 0 ? manualReceipts : autoGeneratedReceipts;
 
   const generateOrderNumber = (order, receptionNum, index) => {
-  if (!receptionNum || receptionNum === 'エラー' || !order.orderDate) {
-    return '---';
-  }
-  try {
-    // ★ YYYY-MM-DD のような形式を想定し、末尾2桁（日付）を取得
-    const day = order.orderDate.split('/')[2].padStart(2, '0');
-    const orderSequence = (index + 1).toString();
-    return `${day}${receptionNum}${orderSequence}`;
-  } catch (e) {
-    // もし予期せぬ日付形式でもエラーにならないようにする
-    console.error("Date format error:", order.orderDate);
-    return '---';
-  }
-};
+    if (!receptionNum || receptionNum === 'エラー' || !order.orderDate) {
+      return '---';
+    }
+    try {
+      // ★ YYYY-MM-DD のような形式を想定し、末尾2桁（日付）を取得
+      const day = order.orderDate.split('/')[2].padStart(2, '0');
+      const orderSequence = (index + 1).toString();
+      return `${day}${receptionNum}${orderSequence}`;
+    } catch (e) {
+      // もし予期せぬ日付形式でもエラーにならないようにする
+      console.error("Date format error:", order.orderDate);
+      return '---';
+    }
+  };
 
   // handleOpenConfirmation 関数の全文を以下に置き換えてください
-const handleOpenConfirmation = async () => {
-    if(!customerInfo.floorNumber){
+  const handleOpenConfirmation = async () => {
+    if (!customerInfo.floorNumber) {
       customerInfo.floorNumber = '0';
     }
     if (!allocationNumber) {
@@ -437,25 +437,35 @@ const handleOpenConfirmation = async () => {
       // APIライブラリの関数を呼び出す
       const data = await orderApi.generateReceptionNumberAPI(allocationNumber, customerInfo.floorNumber, selectedYear);
       const newReceptionNumber = data.receptionNumber;
-      setReceptionNumber(newReceptionNumber); 
-      
+      setReceptionNumber(newReceptionNumber);
+
       const ordersWithFinalId = orders.map((order, index) => ({
         ...order,
         orderId: generateOrderNumber(order, newReceptionNumber, index)
       }));
-      
+
       const transformedReceipts = (manualReceipts.length > 0 ? manualReceipts : autoGeneratedReceipts).map(receipt => {
-        const correspondingOrderIndex = orders.findIndex(o => (receipt.groupId && o.id === parseInt(receipt.issueDate, 10)) || (!receipt.groupId && o.orderDate === receipt.issueDate));
+        if (!receipt.issueDate) {
+          return receipt;
+        }
+
+        // ★★★ 修正: order.id でマッチング ★★★
+        const correspondingOrderIndex = orders.findIndex(o =>
+          o.id.toString() === receipt.issueDate.toString()
+        );
+
         const correspondingOrder = orders[correspondingOrderIndex];
+
         if (correspondingOrder) {
           const finalOrderNumber = generateOrderNumber(correspondingOrder, newReceptionNumber, correspondingOrderIndex);
           if (finalOrderNumber !== '---') {
             return { ...receipt, issueDate: finalOrderNumber, linkedOrderId: finalOrderNumber };
           }
         }
+
         return receipt;
       });
-      
+
       const transformedPaymentGroups = paymentGroupsWithTotals.map(group => {
         const correspondingOrderIndex = orders.findIndex(o => o.id === parseInt(group.paymentDate, 10));
         const correspondingOrder = orders[correspondingOrderIndex];
@@ -474,7 +484,7 @@ const handleOpenConfirmation = async () => {
         receipts: transformedReceipts,
         paymentGroups: transformedPaymentGroups,
       });
-      
+
       setIsConfirmationOpen(true); // 最後にモーダルを開く
 
     } catch (error) {
@@ -483,117 +493,117 @@ const handleOpenConfirmation = async () => {
       setReceptionNumber('エラー');
     }
   };
-    const handleSubmit = async () => {
-      const finalData = { 
-        selectedYear: selectedYear,
-        customer: customerInfo, 
-        orders: confirmedData.orders,
-        receptionNumber, 
-        allocationNumber, 
-        paymentGroups: confirmedData.paymentGroups, 
-        receipts: confirmedData.receipts,
-        orderType: '新規注文',
-        globalNotes: globalNotes,
-      };
-
-      try {
-        // APIライブラリの関数を呼び出す
-        await orderApi.saveOrderAPI(finalData);
-        
-        if (isConfirmationOpen) setIsConfirmationOpen(false);
-        setConfirmedData(null); 
-        alert('注文が正常に送信されました。');
-        resetForm();
-
-      } catch (error) {
-      // ★ APIから重複エラーが返ってきた場合の処理
-        if (error.name === 'ReceptionNumberConflictError') {
-          alert(`他端末と注文が重複したため、処理を中断しました。\nお手数ですが、再度注文内容を確認ボタンを押してください。`);
-          setIsConfirmationOpen(false); 
-        } else {
-          // その他の通常エラー
-          console.error('注文の送信中にエラーが発生しました:', error);
-          alert(`エラー: ${error.message}`);
-        }
-      }
+  const handleSubmit = async () => {
+    const finalData = {
+      selectedYear: selectedYear,
+      customer: customerInfo,
+      orders: confirmedData.orders,
+      receptionNumber,
+      allocationNumber,
+      paymentGroups: confirmedData.paymentGroups,
+      receipts: confirmedData.receipts,
+      orderType: '新規注文',
+      globalNotes: globalNotes,
     };
-    /**
-    * 注文内容の整合性を検証する関数
-    * @returns {boolean} - 問題がなければtrue、あればfalseを返す
-    */
-    const validateOrderDetails = () => {
-      // --- 検証1: ネタ変更の個数が合計を超えていないかチェック ---
-      for (const order of orders) {
-        if (order.netaChanges) {
-          for (const productKey in order.netaChanges) {
-            const patterns = order.netaChanges[productKey] || [];
-            const netaChangeSum = patterns.reduce((sum, pattern) => sum + (parseInt(pattern.quantity) || 0), 0);
-            const mainItem = order.orderItems.find(item => item.productKey === productKey);
-            const mainQuantity = parseInt(mainItem?.quantity) || 0;
 
-            if (netaChangeSum > mainQuantity) {
-              const productName = mainItem?.name || `商品(${productKey})`;
-              const orderIndex = orders.findIndex(o => o.id === order.id);
-              alert(`注文 #${orderIndex + 1} の「${productName}」において、ネタ変更の合計個数（${netaChangeSum}個）が商品の注文数（${mainQuantity}個）を超えています。\n\n個数を確認してください。`);
-              return false; // 問題があったのでfalseを返して終了
-            }
+    try {
+      // APIライブラリの関数を呼び出す
+      await orderApi.saveOrderAPI(finalData);
+
+      if (isConfirmationOpen) setIsConfirmationOpen(false);
+      setConfirmedData(null);
+      alert('注文が正常に送信されました。');
+      resetForm();
+
+    } catch (error) {
+      // ★ APIから重複エラーが返ってきた場合の処理
+      if (error.name === 'ReceptionNumberConflictError') {
+        alert(`他端末と注文が重複したため、処理を中断しました。\nお手数ですが、再度注文内容を確認ボタンを押してください。`);
+        setIsConfirmationOpen(false);
+      } else {
+        // その他の通常エラー
+        console.error('注文の送信中にエラーが発生しました:', error);
+        alert(`エラー: ${error.message}`);
+      }
+    }
+  };
+  /**
+  * 注文内容の整合性を検証する関数
+  * @returns {boolean} - 問題がなければtrue、あればfalseを返す
+  */
+  const validateOrderDetails = () => {
+    // --- 検証1: ネタ変更の個数が合計を超えていないかチェック ---
+    for (const order of orders) {
+      if (order.netaChanges) {
+        for (const productKey in order.netaChanges) {
+          const patterns = order.netaChanges[productKey] || [];
+          const netaChangeSum = patterns.reduce((sum, pattern) => sum + (parseInt(pattern.quantity) || 0), 0);
+          const mainItem = order.orderItems.find(item => item.productKey === productKey);
+          const mainQuantity = parseInt(mainItem?.quantity) || 0;
+
+          if (netaChangeSum > mainQuantity) {
+            const productName = mainItem?.name || `商品(${productKey})`;
+            const orderIndex = orders.findIndex(o => o.id === order.id);
+            alert(`注文 #${orderIndex + 1} の「${productName}」において、ネタ変更の合計個数（${netaChangeSum}個）が商品の注文数（${mainQuantity}個）を超えています。\n\n個数を確認してください。`);
+            return false; // 問題があったのでfalseを返して終了
           }
         }
       }
+    }
 
-      // --- 検証2: 注文合計と書類合計の金額が一致しているかチェック ---
-      const activeOrders = orders.filter(o => o.orderStatus !== 'CANCELED');
-      const grandTotal = activeOrders.reduce((total, order) => total + calculateOrderTotal(order), 0);
-      const receiptsTotal = finalReceipts.reduce((total, receipt) => total + (parseFloat(receipt.amount) || 0), 0);
+    // --- 検証2: 注文合計と書類合計の金額が一致しているかチェック ---
+    const activeOrders = orders.filter(o => o.orderStatus !== 'CANCELED');
+    const grandTotal = activeOrders.reduce((total, order) => total + calculateOrderTotal(order), 0);
+    const receiptsTotal = finalReceipts.reduce((total, receipt) => total + (parseFloat(receipt.amount) || 0), 0);
 
-      if (grandTotal !== receiptsTotal) {
-        const message = `全注文の合計金額 (¥${grandTotal.toLocaleString()}) と、発行される書類の合計金額 (¥${receiptsTotal.toLocaleString()}) が一致していません。\n\nこのまま登録を続けますか？`;
-        // ユーザーが「キャンセル」を押した場合は、falseを返して終了
-        if (!window.confirm(message)) {
-          return false;
-        }
+    if (grandTotal !== receiptsTotal) {
+      const message = `全注文の合計金額 (¥${grandTotal.toLocaleString()}) と、発行される書類の合計金額 (¥${receiptsTotal.toLocaleString()}) が一致していません。\n\nこのまま登録を続けますか？`;
+      // ユーザーが「キャンセル」を押した場合は、falseを返して終了
+      if (!window.confirm(message)) {
+        return false;
       }
+    }
 
-      // --- 全ての検証をクリア ---
-      return true; // 問題がなかったのでtrueを返す
-    };
-    const handleNewOrderConfirm = () => {
-      // 作成した検証関数を呼び出す
-      const isFormValid = validateOrderDetails();
+    // --- 全ての検証をクリア ---
+    return true; // 問題がなかったのでtrueを返す
+  };
+  const handleNewOrderConfirm = () => {
+    // 作成した検証関数を呼び出す
+    const isFormValid = validateOrderDetails();
 
-      // 検証が成功した場合（trueが返ってきた場合）のみ、handleOpenConfirmationを呼び出す
-      if (isFormValid) {
+    // 検証が成功した場合（trueが返ってきた場合）のみ、handleOpenConfirmationを呼び出す
+    if (isFormValid) {
       handleOpenConfirmation(); // ここで指定の関数を呼び出す
     }
   };
 
-  
-    if (loading) return <h4>設定データを読み込んでいます...</h4>;
-    if (error) return <h4 style={{color: 'red'}}>エラー: {error}</h4>;
-    if (!configuration) return <h4>表示する設定年を選択してください。</h4>;
 
-    return (
-      <div className="main-container">
-        {isConfirmationOpen && confirmedData && ( // ★ confirmedDataが存在する場合のみ表示
-    <ConfirmationModal 
-      onClose={() => setIsConfirmationOpen(false)} 
-      onSubmit={handleSubmit} 
-      customerInfo={customerInfo} 
-      receptionNumber={receptionNumber} 
-      allocationNumber={allocationNumber} 
-      calculateOrderTotal={calculateOrderTotal} 
-      generateOrderNumber={generateOrderNumber} 
-      calculateGrandTotal={calculateGrandTotal} 
-      isPaymentOptionsOpen={isPaymentOptionsOpen} 
-      SIDE_ORDERS_DB={SIDE_ORDERS_DB} 
-      orderType="新規注文" 
-      globalNotes={globalNotes}
-      // ★★★ ここを修正 ★★★
-      orders={confirmedData.orders}
-      receipts={confirmedData.receipts}
-      paymentGroups={confirmedData.paymentGroups}
-    /> 
-  )}
+  if (loading) return <h4>設定データを読み込んでいます...</h4>;
+  if (error) return <h4 style={{ color: 'red' }}>エラー: {error}</h4>;
+  if (!configuration) return <h4>表示する設定年を選択してください。</h4>;
+
+  return (
+    <div className="main-container">
+      {isConfirmationOpen && confirmedData && ( // ★ confirmedDataが存在する場合のみ表示
+        <ConfirmationModal
+          onClose={() => setIsConfirmationOpen(false)}
+          onSubmit={handleSubmit}
+          customerInfo={customerInfo}
+          receptionNumber={receptionNumber}
+          allocationNumber={allocationNumber}
+          calculateOrderTotal={calculateOrderTotal}
+          generateOrderNumber={generateOrderNumber}
+          calculateGrandTotal={calculateGrandTotal}
+          isPaymentOptionsOpen={isPaymentOptionsOpen}
+          SIDE_ORDERS_DB={SIDE_ORDERS_DB}
+          orderType="新規注文"
+          globalNotes={globalNotes}
+          // ★★★ ここを修正 ★★★
+          orders={confirmedData.orders}
+          receipts={confirmedData.receipts}
+          paymentGroups={confirmedData.paymentGroups}
+        />
+      )}
       <div className="main-content">
         <div className="form-container">
           <div className="form-header"> <h1 className="form-title">注文フォーム</h1> </div>
@@ -636,19 +646,19 @@ const handleOpenConfirmation = async () => {
               <h2 className="payment-info-title">お支払い・書類設定</h2>
               <div className="payment-options-container always-open">
                 <div className="payment-info-fields-container">
-                  <div className="payment-info-field"> 
-                    <label className="payment-info-label"> 
-                      支払い方法 
-                      <span className="required-mark">*</span> 
-                    </label> 
-                    <select name="paymentMethod" 
-                      value={customerInfo.paymentMethod} 
-                      onChange={handleCustomerInfoChange} 
-                      className="payment-info-select"> 
-                      <option value="">選択してください</option> 
-                      <option value="現金">代金引換</option> 
-                      <option value="請求書払い">後日振込(請求書払い)</option> 
-                    </select> 
+                  <div className="payment-info-field">
+                    <label className="payment-info-label">
+                      支払い方法
+                      <span className="required-mark">*</span>
+                    </label>
+                    <select name="paymentMethod"
+                      value={customerInfo.paymentMethod}
+                      onChange={handleCustomerInfoChange}
+                      className="payment-info-select">
+                      <option value="">選択してください</option>
+                      <option value="現金">代金引換</option>
+                      <option value="請求書払い">後日振込(請求書払い)</option>
+                    </select>
                   </div>
                   <div className="payment-info-field"> <label className="payment-info-label"> 領収書・請求書の宛名（自動作成用） </label> <input type="text" name="invoiceName" value={customerInfo.invoiceName} onChange={handleCustomerInfoChange} className="payment-info-input" placeholder="株式会社○○○" /> </div>
                 </div>
@@ -670,10 +680,10 @@ const handleOpenConfirmation = async () => {
                                 {orders.map((order, index) => (
                                   // 日付が設定されている注文のみをオプションとして表示
                                   order.orderDate && (
-                                  <option key={order.id} value={order.id}>
-                                   注文#{index + 1} ({order.orderDate})
-                                  </option>
-                                 )
+                                    <option key={order.id} value={order.id}>
+                                      注文#{index + 1} ({order.orderDate})
+                                    </option>
+                                  )
                                 ))}
                               </select>
                             </div>
@@ -723,13 +733,13 @@ const handleOpenConfirmation = async () => {
                                 <select className="combined-payment-select" value={receipt.issueDate} onChange={(e) => updateReceipt(receipt.id, 'issueDate', e.target.value)}>
                                   <option value="">発行日を選択</option>
                                   {orders.map((order, index) => (
-                                  // 日付が設定されている注文のみをオプションとして表示
-                                  order.orderDate && (
-                                  <option key={order.id} value={order.id}>
-                                   注文#{index + 1} ({order.orderDate})
-                                  </option>
-                                 )
-                                ))}
+                                    // 日付が設定されている注文のみをオプションとして表示
+                                    order.orderDate && (
+                                      <option key={order.id} value={order.id}>
+                                        注文#{index + 1} ({order.orderDate})
+                                      </option>
+                                    )
+                                  ))}
                                 </select>
                               </div>
                               <div className="combined-payment-field">
@@ -760,7 +770,7 @@ const handleOpenConfirmation = async () => {
                 rows="4"
               />
             </div>
-            <div className="submit-container"> 
+            <div className="submit-container">
               <button type="button" onClick={handleNewOrderConfirm} className="confirm-btn"> 注文内容を確認 </button>
             </div>
           </div>

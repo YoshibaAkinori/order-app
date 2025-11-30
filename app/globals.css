@@ -3146,3 +3146,54 @@ th {
   font-size: 1.5rem;
   font-weight: bold;
 }
+/* 入れるネタリスト */
+.to-neta-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.5rem 0;
+}
+
+.to-neta-item {
+  display: inline-flex;
+  align-items: center;
+  background-color: #e0f2fe;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  margin: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.remove-neta-btn {
+  background: none;
+  border: none;
+  color: #dc2626;
+  font-size: 1rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.remove-neta-btn:hover {
+  color: #991b1b;
+}
+/* 通知削除ボタン */
+.notification-delete-btn {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.notification-delete-btn:hover {
+    color: #dc2626;
+    background-color: #fee2e2;
+}
