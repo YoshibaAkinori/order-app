@@ -21,11 +21,28 @@ const ConfirmationModal = ({
       const stylesheets = Array.from(document.styleSheets).map(sheet => sheet.href).filter(href => href).map(href => `<link rel="stylesheet" href="${href}">`).join('');
       const printWindow = window.open('', '_blank');
       printWindow.document.write(`
-        <html>
-          <head><title>注文確認書</title>${stylesheets}<style>body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.confirmation-document{box-shadow:none;padding:0;}</style></head>
-          <body>${printContent.innerHTML}</body>
-        </html>
-      `);
+      <html>
+        <head>
+          <title>注文確認書</title>
+          ${stylesheets}
+          <style>
+            @page { size: A4; margin: 15mm; }
+            body {
+              margin: 0;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .confirmation-document {
+              box-shadow: none;
+              padding: 0;
+              max-width: 100%;
+              width: 100%;
+            }
+          </style>
+        </head>
+        <body>${printContent.innerHTML}</body>
+      </html>
+    `);
       printWindow.document.close();
       setTimeout(() => {
         printWindow.print();
@@ -50,7 +67,7 @@ const ConfirmationModal = ({
         <div className="confirmation-content">
           <div id="printable-area">
             <div className="confirmation-document compact">
-              <header className="conf-doc-header"> <div className="conf-logo">松栄寿し</div> <div className="conf-doc-title"> <h1>注文確認書</h1> <p>受付番号: {receptionNumber || '-----'}</p> 
+              <header className="conf-doc-header"> <div className="conf-logo">松栄寿し</div> <div className="conf-doc-title"> <h1>注文確認書</h1> <p>受付番号: {receptionNumber || '-----'}</p>
                 <p>注文の種類: {orderType || '新規注文'}</p></div> </header>
               <section className="conf-section"> <p className="conf-current-date">{new Date().toLocaleDateString('ja-JP')} 現在、以下の内容でご注文を受付けております。</p> </section>
               <section className="conf-section">
@@ -114,52 +131,52 @@ const ConfirmationModal = ({
                       </div>
                     </div>
                   )}
-                  </section>
+                </section>
               ))}
 
-                <section className="conf-section conf-payment-details">
-                  {(paymentGroups || []).map((group, index) => {
-                    // ★ 修正: 支払日として指定されたID（6桁注文番号 or 数字ID）を元に、注文情報を検索
-                    const paymentOrder = orders.find(o => 
-                      o.orderId === group.paymentDate || o.id.toString() === group.paymentDate.toString()
-                    );
-                    
-                    const paymentOrderIndex = paymentOrder ? orders.findIndex(o => o.id === paymentOrder.id) : -1;
+              <section className="conf-section conf-payment-details">
+                {(paymentGroups || []).map((group, index) => {
+                  // ★ 修正: 支払日として指定されたID（6桁注文番号 or 数字ID）を元に、注文情報を検索
+                  const paymentOrder = orders.find(o =>
+                    o.orderId === group.paymentDate || o.id.toString() === group.paymentDate.toString()
+                  );
 
-                    const displayOrderNumber = (paymentOrder && paymentOrderIndex !== -1)
-                      ? (paymentOrder.orderId || generateOrderNumber(paymentOrder, receptionNumber, paymentOrderIndex))
-                      : '（注文未定）';
+                  const paymentOrderIndex = paymentOrder ? orders.findIndex(o => o.id === paymentOrder.id) : -1;
 
-                    const targetOrderNumbers = Object.keys(group.checkedOrderIds)
-                      .map(orderId => {
-                        const order = orders.find(o => o.id == orderId);
-                        if (!order) return null;
-                        const orderIndex = orders.findIndex(o => o.id === order.id);
-                        return order.orderId || generateOrderNumber(order, receptionNumber, orderIndex);
-                      })
-                      .filter(Boolean)
-                      .join(', ');
+                  const displayOrderNumber = (paymentOrder && paymentOrderIndex !== -1)
+                    ? (paymentOrder.orderId || generateOrderNumber(paymentOrder, receptionNumber, paymentOrderIndex))
+                    : '（注文未定）';
 
-                    return (
-                      <div key={group.id} className="conf-payment-group">
-                        <div className="conf-grid-item">
-                          <div className="conf-label">
-                            支払日 #{index + 1} (お支払いする注文番号: {displayOrderNumber})
-                          </div>
-                          <div className="conf-value-order">
-                            対象注文: {targetOrderNumbers}
-                          </div>
+                  const targetOrderNumbers = Object.keys(group.checkedOrderIds)
+                    .map(orderId => {
+                      const order = orders.find(o => o.id == orderId);
+                      if (!order) return null;
+                      const orderIndex = orders.findIndex(o => o.id === order.id);
+                      return order.orderId || generateOrderNumber(order, receptionNumber, orderIndex);
+                    })
+                    .filter(Boolean)
+                    .join(', ');
+
+                  return (
+                    <div key={group.id} className="conf-payment-group">
+                      <div className="conf-grid-item">
+                        <div className="conf-label">
+                          支払日 #{index + 1} (お支払いする注文番号: {displayOrderNumber})
                         </div>
-                        <div className="conf-grand-total">
-                            <strong>合計金額</strong>
-                            <span>¥ {(group.total || 0).toLocaleString()}</span>
+                        <div className="conf-value-order">
+                          対象注文: {targetOrderNumbers}
                         </div>
                       </div>
-                    );
-                  })}
-                </section>
+                      <div className="conf-grand-total">
+                        <strong>合計金額</strong>
+                        <span>¥ {(group.total || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </section>
 
-              
+
               {(receipts || []).length > 0 && (
                 <section className="conf-section conf-receipt-details">
                   <h2 className="conf-order-title">領収書・請求書 詳細</h2>
@@ -177,7 +194,7 @@ const ConfirmationModal = ({
                         // ★ 修正: 領収書の発行日表示ロジックを両対応に
                         let displayDate = '(未指定)';
                         if (receipt.issueDate) {
-                          const correspondingOrder = orders.find(o => 
+                          const correspondingOrder = orders.find(o =>
                             o.orderId === receipt.issueDate || o.id.toString() === receipt.issueDate.toString()
                           );
 
@@ -189,7 +206,7 @@ const ConfirmationModal = ({
                             displayDate = receipt.issueDate;
                           }
                         }
-                        
+
                         return (
                           <tr key={receipt.id}>
                             <td>{receipt.documentType}</td>

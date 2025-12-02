@@ -1303,17 +1303,19 @@ button {
   align-items: center;
   z-index: 1000;
   padding: 1rem;
+  overflow-y: auto;  /* ★ 追加: モーダルが大きい場合にスクロール可能に */
 }
 
 .confirmation-modal {
   background-color: #f9fafb;
-  border-radius: 0;     /* ★ 全画面なので角の丸みをなくす */
-  width: 100%;          /* ★ 100%に変更 */
-  max-width: none;      /* ★ 最大幅の制限を解除 */
-  height: 100%;         /* ★ 100%に変更 */
+  border-radius: 0.5rem;           /* ★ 変更: 角を丸く */
+  width: 100%;
+  max-width: 800px;                /* ★ 変更: A4幅に近い800pxに制限 */
+  max-height: 95vh;                /* ★ 追加: 画面の95%を上限に */
   display: flex;
   flex-direction: column;
-  box-shadow: none;       /* ★ 全画面なので影は不要 */
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);  /* ★ 変更: 影を追加 */
+  margin: auto;                    /* ★ 追加: 中央揃え */
 }
 
 .confirmation-header {
