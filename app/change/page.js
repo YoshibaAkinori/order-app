@@ -22,6 +22,7 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
   const ALLOCATION_MASTER = useMemo(() => (configuration?.allocationMaster || {}), [configuration]);
   const deliveryDates = useMemo(() => (configuration?.deliveryDates || []), [configuration]);
   const deliveryTimes = useMemo(() => (configuration?.deliveryTimes || []), [configuration]);
+  const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true);
   const [globalNotes, setGlobalNotes] = useState('');
   const searchParams = useSearchParams();
 
@@ -126,6 +127,7 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
     setIsDataLoaded(false);
     setSearchId('');
     setGlobalNotes('');
+    setSendConfirmationEmail(true);
   };
 
   const handleSearch = async () => {
@@ -311,6 +313,7 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
       receipts: transformedReceipts,
       orderType: '変更',
       globalNotes: globalNotes,
+      sendConfirmationEmail: sendConfirmationEmail,
     };
 
     try {
@@ -897,7 +900,27 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
 
   return (
     <div className={isModalMode ? "modal-page-container" : "main-container"}>
-      {isConfirmationOpen && (<ConfirmationModal onClose={() => setIsConfirmationOpen(false)} onSubmit={handleUpdate} customerInfo={customerInfo} orders={orders.filter(o => o.orderStatus !== 'CANCELED')} receptionNumber={receptionNumber} allocationNumber={allocationNumber} calculateOrderTotal={calculateOrderTotal} generateOrderNumber={generateOrderNumber} calculateGrandTotal={calculateGrandTotal} isPaymentOptionsOpen={isPaymentOptionsOpen} SIDE_ORDERS_DB={SIDE_ORDERS_DB} receipts={finalReceipts} paymentGroups={paymentGroupsWithTotals} orderType="変更" globalNotes={globalNotes} />)}
+      {isConfirmationOpen && (
+        <ConfirmationModal
+          onClose={() => setIsConfirmationOpen(false)}
+          onSubmit={handleUpdate}
+          customerInfo={customerInfo}
+          orders={orders.filter(o => o.orderStatus !== 'CANCELED')}
+          receptionNumber={receptionNumber}
+          allocationNumber={allocationNumber}
+          calculateOrderTotal={calculateOrderTotal}
+          generateOrderNumber={generateOrderNumber}
+          calculateGrandTotal={calculateGrandTotal}
+          isPaymentOptionsOpen={isPaymentOptionsOpen}
+          SIDE_ORDERS_DB={SIDE_ORDERS_DB}
+          receipts={finalReceipts}
+          paymentGroups={paymentGroupsWithTotals}
+          orderType="変更"
+          globalNotes={globalNotes}
+          sendConfirmationEmail={sendConfirmationEmail}           // ★ 追加
+          setSendConfirmationEmail={setSendConfirmationEmail}     // ★ 追加
+        />
+      )}
       <div className="main-content">
         <div className="form-container">
           <div className="form-header"> <h1 className="form-title">注文変更</h1> </div>
