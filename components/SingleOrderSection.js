@@ -40,7 +40,7 @@ const SingleOrderSection = ({
     const { name, value } = e.target;
     updateOrder(order.id, { [name]: value });
   };
-  
+
   const handleSameAddressChange = (e) => {
     const isChecked = e.target.checked;
     updateOrder(order.id, {
@@ -51,13 +51,14 @@ const SingleOrderSection = ({
 
   const handleItemChange = (itemIndex, field, value) => {
     const halfWidthValue = String(value).replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0));
-    const finalValue = parseInt(halfWidthValue, 10) || "";
+    const parsed = parseInt(halfWidthValue, 10);
+    const finalValue = isNaN(parsed) ? 0 : parsed;
     const updatedItems = order.orderItems.map((item, i) => (i === itemIndex ? { ...item, [field]: finalValue } : item));
     updateOrder(order.id, { orderItems: updatedItems });
   };
 
   const getOrderedProducts = () => order.orderItems.filter((item) => (parseInt(item.quantity) || 0) > 0);
-  
+
   const getMaxQuantityForPattern = (productKey, currentPatternId) => {
     const product = order.orderItems.find((item) => item.productKey === productKey);
     const totalQuantity = parseInt(product?.quantity) || 0;
@@ -82,64 +83,64 @@ const SingleOrderSection = ({
   };
 
   const handleNetaChangeDetail = (productKey, patternId, field, value) => {
-  let finalValue = value;
+    let finalValue = value;
 
-  if (field === 'quantity') {
-    // 1. 全角数字を半角に直し、さらに数字以外の文字を削除
-    const halfWidthValue = String(value).replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xFEE0));
-    const numericOnly = halfWidthValue.replace(/[^0-9]/g, '');
+    if (field === 'quantity') {
+      // 1. 全角数字を半角に直し、さらに数字以外の文字を削除
+      const halfWidthValue = String(value).replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xFEE0));
+      const numericOnly = halfWidthValue.replace(/[^0-9]/g, '');
 
-    // 2. もし入力が空文字なら、finalValueも空文字にする
-    if (numericOnly === '') {
-      finalValue = '';
-    } else {
-      // 3. 空でなければ数値に変換する
-      finalValue = parseInt(numericOnly, 10);
+      // 2. もし入力が空文字なら、finalValueも空文字にする
+      if (numericOnly === '') {
+        finalValue = '';
+      } else {
+        // 3. 空でなければ数値に変換する
+        finalValue = parseInt(numericOnly, 10);
+      }
     }
-  }
 
-  // 4. stateを更新する
-  const newPatterns = (order.netaChanges[productKey] || []).map((p) => (p.id === patternId ? { ...p, [field]: finalValue } : p));
-  updateOrder(order.id, { netaChanges: { ...order.netaChanges, [productKey]: newPatterns } });
-};
+    // 4. stateを更新する
+    const newPatterns = (order.netaChanges[productKey] || []).map((p) => (p.id === patternId ? { ...p, [field]: finalValue } : p));
+    updateOrder(order.id, { netaChanges: { ...order.netaChanges, [productKey]: newPatterns } });
+  };
 
   const handleNetaSelection = (productKey, patternId, netaItem, isSelected) => {
     const newPatterns = (order.netaChanges[productKey] || []).map((p) => (p.id === patternId ? { ...p, selectedNeta: { ...p.selectedNeta, [netaItem]: isSelected } } : p));
     updateOrder(order.id, { netaChanges: { ...order.netaChanges, [productKey]: newPatterns } });
   };
- 
+
   const totalAmountForThisOrder = calculateOrderTotal(order);
 
   const handleNetaChangeBlur = (productKey, patternId) => {
-  // 対象のパターンを探す
-  const pattern = (order.netaChanges[productKey] || []).find(p => p.id === patternId);
+    // 対象のパターンを探す
+    const pattern = (order.netaChanges[productKey] || []).find(p => p.id === patternId);
 
-  // パターンが存在し、かつその数量が空文字か0の場合
-  if (pattern && (pattern.quantity === '' || pattern.quantity === 0)) {
-    // 既存の削除関数を呼び出して、そのパターンを削除する
-    removeNetaChangePattern(productKey, patternId);
-  }
-};
+    // パターンが存在し、かつその数量が空文字か0の場合
+    if (pattern && (pattern.quantity === '' || pattern.quantity === 0)) {
+      // 既存の削除関数を呼び出して、そのパターンを削除する
+      removeNetaChangePattern(productKey, patternId);
+    }
+  };
 
   return (
     // 2. キャンセル済みの場合にCSSクラスを付与して見た目を変える
     <div className={`single-order-section ${isCanceled ? 'is-canceled' : ''}`}>
       <div className="single-order-header">
         <h3 className="single-order-title">注文 #{orderIndex + 1}<span className="order-id-display">({orderNumberDisplay})</span></h3>
-        
+
         {/* 3. isDeletableがtrueの時だけ削除ボタンを表示し、キャンセル済みなら無効化 */}
         {isDeletable && (
-          <button 
-            onClick={deleteOrder} 
-            className="single-order-delete-btn" 
+          <button
+            onClick={deleteOrder}
+            className="single-order-delete-btn"
             title="この注文を削除またはキャンセル"
-            //disabled={isCanceled}
+          //disabled={isCanceled}
           >
             <X size={24} />
           </button>
         )}
       </div>
-      
+
       {/* 4. キャンセル済みの場合にバッジを表示 */}
       {isCanceled && <div className="canceled-badge">キャンセル予定</div>}
 
@@ -169,9 +170,9 @@ const SingleOrderSection = ({
               <textarea name="deliveryAddress" value={order.deliveryAddress} onChange={handleInputChange} rows="3" className="single-order-textarea" placeholder="お届け先の住所を手入力してください" />
             )}
           </div>
-          <OrderItemsSection 
-            orderItems={order.orderItems} 
-            handleItemChange={handleItemChange} 
+          <OrderItemsSection
+            orderItems={order.orderItems}
+            handleItemChange={handleItemChange}
             totalAmount={totalAmountForThisOrder}
           />
           <OrderOptionsSection
