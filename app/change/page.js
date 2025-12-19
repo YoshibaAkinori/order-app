@@ -23,8 +23,10 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
   const deliveryDates = useMemo(() => (configuration?.deliveryDates || []), [configuration]);
   const deliveryTimes = useMemo(() => (configuration?.deliveryTimes || []), [configuration]);
   const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true);
+  const [isFinalConfirmation, setIsFinalConfirmation] = useState(false); // デフォルトOFF
   const [globalNotes, setGlobalNotes] = useState('');
   const searchParams = useSearchParams();
+
 
 
   const initialCustomerInfo = {
@@ -128,6 +130,7 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
     setSearchId('');
     setGlobalNotes('');
     setSendConfirmationEmail(true);
+    setIsFinalConfirmation(false);
   };
 
   const handleSearch = async () => {
@@ -314,6 +317,7 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
       orderType: '変更',
       globalNotes: globalNotes,
       sendConfirmationEmail: sendConfirmationEmail,
+      isFinalConfirmation: isFinalConfirmation,
     };
 
     try {
@@ -919,6 +923,8 @@ const ChangeOrderPage = ({ initialOrderId, isModalMode = false, onClose }) => {
           globalNotes={globalNotes}
           sendConfirmationEmail={sendConfirmationEmail}           // ★ 追加
           setSendConfirmationEmail={setSendConfirmationEmail}     // ★ 追加
+          isFinalConfirmation={isFinalConfirmation}
+          setIsFinalConfirmation={setIsFinalConfirmation}
         />
       )}
       <div className="main-content">

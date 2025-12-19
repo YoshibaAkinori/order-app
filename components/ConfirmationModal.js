@@ -14,13 +14,12 @@ const ConfirmationModal = ({
   paymentGroups,
   orderType,
   globalNotes,
-  // ★★★ 新しいprops: メール送信ON/OFF制御用 ★★★
+  // ★★★ メール送信制御用のprops ★★★
   sendConfirmationEmail,
   setSendConfirmationEmail,
+  isFinalConfirmation,
+  setIsFinalConfirmation,
 }) => {
-  // メール送信オプションを表示するかどうか（変更の場合かつメールアドレスがある場合のみ表示）
-  const showEmailOption = orderType === '変更' && typeof setSendConfirmationEmail === 'function' && customerInfo?.email;
-
   const handlePrint = () => {
     const printContent = document.getElementById('printable-area');
     if (printContent) {
@@ -66,6 +65,9 @@ const ConfirmationModal = ({
     return modifiers;
   };
 
+  // ★★★ メール送信オプションを表示するかどうか（変更の場合かつメールアドレスがある場合のみ表示） ★★★
+  const showEmailOption = orderType === '変更' && typeof setSendConfirmationEmail === 'function' && customerInfo?.email;
+
   return (
     <div className="confirmation-overlay" id="confirmation-root">
       <div className="confirmation-modal">
@@ -110,19 +112,19 @@ const ConfirmationModal = ({
                         const rows = [];
                         if (standardQty > 0) {
                           rows.push(
-                            <tr key={`${item.productKey}-std`}>
+                            <tr key={`${item.productKey}-standard`}>
                               <td>{item.name}</td>
-                              <td>{item.unitPrice.toLocaleString()}円</td>
+                              <td>¥{item.unitPrice.toLocaleString()}</td>
                               <td>{standardQty}</td>
                               <td>¥{(item.unitPrice * standardQty).toLocaleString()}</td>
                             </tr>
                           );
                         }
-                        netaChangePatterns.forEach((pattern, pIndex) => {
+                        netaChangePatterns.forEach((pattern, patternIndex) => {
                           rows.push(
-                            <tr key={`${item.productKey}-${pIndex}`}>
+                            <tr key={`${item.productKey}-neta-${patternIndex}`}>
                               <td>{item.name}{formatItemModifiers(pattern)}</td>
-                              <td>{item.unitPrice.toLocaleString()}円</td>
+                              <td>¥{item.unitPrice.toLocaleString()}</td>
                               <td>{pattern.quantity}</td>
                               <td>¥{(item.unitPrice * pattern.quantity).toLocaleString()}</td>
                             </tr>
@@ -130,17 +132,20 @@ const ConfirmationModal = ({
                         });
                         return rows;
                       })}
-                      {(order.sideOrders || []).filter(item => item.quantity > 0).map(item => (
-                        <tr key={item.productKey} className="side-order-row">
-                          <td>{SIDE_ORDERS_DB[item.productKey]?.name}</td>
-                          <td>{SIDE_ORDERS_DB[item.productKey]?.price.toLocaleString()}円</td>
-                          <td>{item.quantity}</td>
-                          <td>¥{((SIDE_ORDERS_DB[item.productKey]?.price || 0) * item.quantity).toLocaleString()}</td>
-                        </tr>
-                      ))}
+                      {order.sideOrders && order.sideOrders.filter(item => item.quantity > 0).map(item => {
+                        const sideOrderInfo = SIDE_ORDERS_DB[item.productKey] || { name: '特別注文', price: 0 };
+                        return (
+                          <tr key={`side-${item.productKey}`}>
+                            <td>{sideOrderInfo.name}</td>
+                            <td>¥{sideOrderInfo.price.toLocaleString()}</td>
+                            <td>{item.quantity}</td>
+                            <td>¥{(sideOrderInfo.price * item.quantity).toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                     <tfoot>
-                      <tr>
+                      <tr className="subtotal-row">
                         <td colSpan="3">小計</td>
                         <td>¥{calculateOrderTotal(order).toLocaleString()}</td>
                       </tr>
@@ -148,56 +153,60 @@ const ConfirmationModal = ({
                   </table>
                 </section>
               ))}
-
-              <section className="conf-section conf-payment-details">
-                {(paymentGroups || []).map((group, index) => {
-                  const paymentOrder = orders.find(o =>
-                    o.orderId === group.paymentDate || o.id.toString() === group.paymentDate.toString()
-                  );
-                  const paymentOrderIndex = paymentOrder ? orders.findIndex(o => o.id === paymentOrder.id) : -1;
-
-                  const displayOrderNumber = (paymentOrder && paymentOrderIndex !== -1)
-                    ? (paymentOrder.orderId || generateOrderNumber(paymentOrder, receptionNumber, paymentOrderIndex))
-                    : '（注文未定）';
-
-                  const targetOrderNumbers = Object.keys(group.checkedOrderIds)
-                    .map(orderId => {
-                      const order = orders.find(o => o.id == orderId);
-                      if (!order) return null;
-                      const orderIndex = orders.findIndex(o => o.id === order.id);
-                      return order.orderId || generateOrderNumber(order, receptionNumber, orderIndex);
-                    })
-                    .filter(Boolean)
-                    .join(', ');
-
-                  return (
-                    <div key={group.id} className="conf-payment-group">
-                      <div className="conf-grid-item">
-                        <div className="conf-label">
-                          支払日 #{index + 1} (お支払いする注文番号: {displayOrderNumber})
-                        </div>
-                        <div className="conf-value-order">
-                          対象注文: {targetOrderNumbers}
-                        </div>
-                      </div>
-                      <div className="conf-grand-total">
-                        <strong>合計金額</strong>
-                        <span>¥ {(group.total || 0).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+              <section className="conf-section conf-grand-total">
+                <div className="conf-total-row">
+                  <span>総合計</span>
+                  <span>¥{orders.reduce((sum, order) => sum + calculateOrderTotal(order), 0).toLocaleString()}</span>
+                </div>
               </section>
-
-
-              {(receipts || []).length > 0 && (
+              {paymentGroups && paymentGroups.length > 0 && (
+                <section className="conf-section conf-payment-details">
+                  <h2 className="conf-order-title">お支払い情報</h2>
+                  <table className="conf-items-table">
+                    <thead>
+                      <tr>
+                        <th>支払日#</th>
+                        <th>お支払いを行う注文番号</th>
+                        <th>対象注文</th>
+                        <th>合計金額</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paymentGroups.map((group, index) => {
+                        const paymentOrder = orders.find(o => o.orderId === group.paymentDate);
+                        const paymentOrderIndex = paymentOrder ? orders.findIndex(o => o.orderId === paymentOrder.orderId) : -1;
+                        const displayOrderNumber = (paymentOrder && paymentOrderIndex !== -1)
+                          ? (paymentOrder.orderId || generateOrderNumber(paymentOrder, receptionNumber, paymentOrderIndex))
+                          : '（注文未定）';
+                        const targetOrderNumbers = Object.keys(group.checkedOrderIds)
+                          .map(orderIdKey => {
+                            const order = orders.find(o => o.orderId === orderIdKey);
+                            if (!order) return null;
+                            return order.orderId;
+                          })
+                          .filter(Boolean)
+                          .join(', ');
+                        return (
+                          <tr key={group.id || index}>
+                            <td>支払日#{index + 1}</td>
+                            <td>{displayOrderNumber}</td>
+                            <td>{targetOrderNumbers}</td>
+                            <td>¥{(group.total || 0).toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </section>
+              )}
+              {receipts && receipts.length > 0 && (
                 <section className="conf-section conf-receipt-details">
                   <h2 className="conf-order-title">領収書・請求書 詳細</h2>
                   <table className="conf-items-table">
                     <thead>
                       <tr>
-                        <th>分類</th>
-                        <th>お渡しする注文番号</th>
+                        <th>種類</th>
+                        <th>お渡し日</th>
                         <th>宛名</th>
                         <th>金額</th>
                       </tr>
@@ -206,14 +215,11 @@ const ConfirmationModal = ({
                       {receipts.map(receipt => {
                         let displayDate = '(未指定)';
                         if (receipt.issueDate) {
-                          const correspondingOrder = orders.find(o =>
-                            o.orderId === receipt.issueDate || o.id.toString() === receipt.issueDate.toString()
-                          );
-
+                          const correspondingOrder = orders.find(o => o.orderId === receipt.issueDate);
                           if (correspondingOrder) {
                             const orderIndex = orders.findIndex(o => o.id === correspondingOrder.id);
                             const orderNumber = correspondingOrder.orderId || generateOrderNumber(correspondingOrder, receptionNumber, orderIndex);
-                            displayDate = (orderNumber !== '---') ? orderNumber : '(日付未定)';
+                            displayDate = orderNumber !== '---' ? orderNumber : '(日付未定)';
                           } else {
                             displayDate = receipt.issueDate;
                           }
@@ -249,7 +255,7 @@ const ConfirmationModal = ({
             </div>
           </div>
 
-          {/* ★★★ メール送信オプション（変更の場合のみ表示） ★★★ */}
+          {/* ★★★ メール送信オプション（変更の場合かつメールアドレスがある場合のみ表示） ★★★ */}
           {showEmailOption && (
             <div className="email-option-section">
               <label className="email-option-label">
@@ -260,6 +266,26 @@ const ConfirmationModal = ({
                 />
                 <span>変更確認メールを送信する</span>
               </label>
+              
+              {/* 最終確認オプション（メール送信ONの場合のみ表示） */}
+              {sendConfirmationEmail && (
+                <div className="email-option-nested">
+                  <label className="email-option-label email-option-label--nested">
+                    <input
+                      type="checkbox"
+                      checked={isFinalConfirmation}
+                      onChange={(e) => setIsFinalConfirmation(e.target.checked)}
+                    />
+                    <span>最終確認として送信する</span>
+                  </label>
+                  {isFinalConfirmation && (
+                    <p className="email-option-info">
+                      ※ 件名・本文が最終確認版になります
+                    </p>
+                  )}
+                </div>
+              )}
+              
               {!sendConfirmationEmail && (
                 <p className="email-option-warning">
                   ※ 確認メールは送信されません
@@ -268,10 +294,10 @@ const ConfirmationModal = ({
             </div>
           )}
 
-          <div className="confirmation-actions">
-            <button onClick={handlePrint} className="confirmation-print-btn"> <Printer size={16} /> 印刷する </button>
-            <button onClick={onClose} className="confirmation-back-btn"> 修正する </button>
-            <button onClick={onSubmit} className="confirmation-submit-btn"> この内容で{orderType === '変更' ? '変更' : '送信'} </button>
+          <div className="confirmation-actions"> 
+            <button onClick={handlePrint} className="confirmation-print-btn"> <Printer size={16} /> 印刷する </button> 
+            <button onClick={onClose} className="confirmation-back-btn"> 修正する </button> 
+            <button onClick={onSubmit} className="confirmation-submit-btn"> この内容で送信 </button> 
           </div>
         </div>
       </div>

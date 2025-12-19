@@ -3200,10 +3200,12 @@ th {
     background-color: #fee2e2;
 }
 /* ========================================
-   Email Option Section (Confirmation Modal)
+   Email Option Section (Change Page - ConfirmationModal)
+   globals.css に追加
    ======================================== */
+
 .email-option-section {
-  margin: 1rem 1.5rem;
+  margin: 1rem 0;
   padding: 1rem;
   background-color: #f0f9ff;
   border: 1px solid #bae6fd;
@@ -3216,18 +3218,45 @@ th {
   gap: 0.5rem;
   font-weight: 500;
   cursor: pointer;
-  font-size: 0.95rem;
 }
 
 .email-option-label input[type="checkbox"] {
   width: 1.25rem;
   height: 1.25rem;
   accent-color: #2563eb;
-  cursor: pointer;
 }
 
+/* ネストされたオプション（最終確認チェックボックス） */
+.email-option-nested {
+  margin-top: 0.75rem;
+  margin-left: 1.75rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid #bae6fd;
+}
+
+.email-option-label--nested {
+  font-weight: 400;
+  font-size: 0.9rem;
+}
+
+.email-option-label--nested input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* 最終確認時の情報メッセージ */
+.email-option-info {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #dbeafe;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  color: #1e40af;
+}
+
+/* メール送信OFF時の警告メッセージ */
 .email-option-warning {
-  margin: 0.5rem 0 0 0;
+  margin-top: 0.5rem;
   padding: 0.5rem;
   background-color: #fef3c7;
   border-radius: 0.25rem;
