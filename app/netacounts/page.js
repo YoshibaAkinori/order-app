@@ -170,12 +170,27 @@ const SummaryPage = () => {
       }
     });
 
-    // 2. サビ抜き注文のシャリ玉を「サビ抜き玉」カテゴリに加算
+    // 2. サビ抜き注文のシャリ玉数を計算（商品ごとのシャリ玉数を考慮）
     let sabinukiShariTotal = 0;
-    Object.values(product_summary || {}).forEach(summary => {
-      sabinukiShariTotal += (summary.normal_nowasabi || 0) + (summary.changed_nowasabi || 0);
+    Object.keys(product_summary || {}).forEach(productKey => {
+      const summary = product_summary[productKey];
+      const productMaster = masters.products[productKey];
+      
+      // 商品マスターからシャリ玉の数量を取得
+      const shariNetaInfo = (productMaster?.neta || []).find(n => n.name === 'シャリ玉');
+      const shariQtyPerProduct = shariNetaInfo ? (shariNetaInfo.quantity || 1) : 1;
+      
+      // サビ抜き注文数 × 商品あたりのシャリ玉数
+      const sabinukiCount = (summary.normal_nowasabi || 0) + (summary.changed_nowasabi || 0);
+      sabinukiShariTotal += sabinukiCount * shariQtyPerProduct;
     });
 
+    // 3. シャリ玉からサビ抜き分を減算
+    if (totals['シャリ玉']) {
+      totals['シャリ玉'] -= sabinukiShariTotal;
+    }
+
+    // 4. サビ抜き玉カテゴリに加算
     if (!totals['サビ抜き玉']) {
       totals['サビ抜き玉'] = 0;
     }
