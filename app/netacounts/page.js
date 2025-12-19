@@ -155,9 +155,10 @@ const SummaryPage = () => {
   const categoryTotals = useMemo(() => {
     if (!summaryData) return {};
     
-    const { neta_summary, masters } = summaryData;
+    const { neta_summary, masters, product_summary } = summaryData;
     const totals = {};
 
+    // 1. 従来通り、ネタマスターのカテゴリ別に集計
     (masters.netaMaster || []).forEach(neta => {
       const category = neta.category;
       // 「その他」カテゴリは集計から除外
@@ -168,6 +169,17 @@ const SummaryPage = () => {
         totals[category] += neta_summary[neta.netaName] || 0;
       }
     });
+
+    // 2. サビ抜き注文のシャリ玉を「サビ抜き玉」カテゴリに加算
+    let sabinukiShariTotal = 0;
+    Object.values(product_summary || {}).forEach(summary => {
+      sabinukiShariTotal += (summary.normal_nowasabi || 0) + (summary.changed_nowasabi || 0);
+    });
+
+    if (!totals['サビ抜き玉']) {
+      totals['サビ抜き玉'] = 0;
+    }
+    totals['サビ抜き玉'] += sabinukiShariTotal;
     
     return totals;
   }, [summaryData]);
@@ -294,7 +306,19 @@ const SummaryPage = () => {
                 ))}
               </tbody>
               <tfoot>
-                {Object.keys(categoryTotals).sort().map(category => (
+                {Object.keys(categoryTotals)
+                  .sort((a, b) => {
+                    // 表示順を定義（数値が小さいほど先に表示）
+                    const displayOrder = {
+                      'シャリ玉': 1,
+                      'サビ抜き玉': 2,
+                      '海苔巻き玉': 3,
+                    };
+                    const orderA = displayOrder[a] ?? 99;
+                    const orderB = displayOrder[b] ?? 99;
+                    return orderA - orderB;
+                  })
+                  .map(category => (
                   <tr key={category} style={{fontWeight: 'bold', backgroundColor: '#f2f2f2'}}>
                     <td>{category} 計</td>
                     <td>{categoryTotals[category]}</td>
