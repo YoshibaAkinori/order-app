@@ -1,81 +1,133 @@
 "use client";
-import React, { useState } from 'react';
-import styles from './ProductForm.module.css'; // 既存のCSSを再利用
+import React, { useState, useMemo } from 'react';
 
-const IchiranExcelModal = ({ allRoutes = [], onClose, onSubmit }) => {
-  // 選択されたルートを管理するためのstate
-  const [selectedRoutes, setSelectedRoutes] = useState([]);
+const IchiranExcelModal = ({ allRoutes = [], deliveryWariate = [], onClose, onSubmit }) => {
+  const [selectedWariate, setSelectedWariate] = useState('');
+  const [checkedRoutes, setCheckedRoutes] = useState({});
 
-  // チェックボックスの状態が変更されたときの処理
-  const handleRouteChange = (e) => {
-    const { value: routeName, checked } = e.target;
-    setSelectedRoutes(prev => {
-      if (checked) {
-        return [...prev, routeName]; // チェックされたら追加
-      } else {
-        return prev.filter(r => r !== routeName); // チェックが外れたら削除
-      }
-    });
-  };
-  
-  // 「全選択/全解除」のチェックボックスが変更されたときの処理
-  const handleSelectAllChange = (e) => {
-    if (e.target.checked) {
-      setSelectedRoutes(allRoutes); // すべてのルートを選択
-    } else {
-      setSelectedRoutes([]); // すべての選択を解除
+  // 割り当てを選択したときの処理
+  const handleWariateSelect = (wariateName) => {
+    setSelectedWariate(wariateName);
+    const wariate = deliveryWariate.find(w => w.name === wariateName);
+    if (wariate) {
+      // 該当する割り当てのresponsibleRoutesを全てtrueにする
+      const newCheckedRoutes = {};
+      (wariate.responsibleRoutes || []).forEach(route => {
+        newCheckedRoutes[route] = true;
+      });
+      setCheckedRoutes(newCheckedRoutes);
     }
   };
 
-
-  // 作成ボタンが押されたときの処理
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(selectedRoutes); // 親コンポーネントに選択されたルートを渡す
+  // チェックボックスの変更処理
+  const handleRouteCheck = (route) => {
+    setCheckedRoutes(prev => ({
+      ...prev,
+      [route]: !prev[route]
+    }));
   };
 
-  const isAllSelected = allRoutes.length > 0 && selectedRoutes.length === allRoutes.length;
+  // 作成ボタンの処理
+  const handleSubmit = () => {
+    const selectedRoutes = Object.keys(checkedRoutes).filter(route => checkedRoutes[route]);
+    if (selectedRoutes.length === 0) {
+      alert('少なくとも1つのルートを選択してください。');
+      return;
+    }
+    onSubmit(selectedRoutes);
+  };
+
+  // 表示するルート一覧（選択された割り当てのresponsibleRoutes）
+  const displayRoutes = useMemo(() => {
+    if (!selectedWariate) return [];
+    const wariate = deliveryWariate.find(w => w.name === selectedWariate);
+    return wariate?.responsibleRoutes || [];
+  }, [selectedWariate, deliveryWariate]);
 
   return (
-    <div className={styles.modalBackdrop} onClick={onClose}>
-      <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-        <form onSubmit={handleSubmit}>
-          <h3>一覧Excelを作成</h3>
-          <p>Excelに含める配達ルートを選択してください。</p>
+    <div className="settings-modal-backdrop" onClick={onClose}>
+      <div className="settings-modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
+        <div className="settings-modal-header">
+          <h2>一覧Excelを作成</h2>
+          <button onClick={onClose} className="settings-modal-close-btn">&times;</button>
+        </div>
+        
+        {/* 割り当て選択ボタン */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          {(deliveryWariate || []).map(wariate => (
+            <button 
+              key={wariate.name} 
+              onClick={() => handleWariateSelect(wariate.name)}
+              style={{ 
+                flex: '1',
+                minWidth: '100px',
+                padding: '0.5rem 1rem',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                backgroundColor: selectedWariate === wariate.name ? '#e91e63' : '#ccc',
+                color: selectedWariate === wariate.name ? 'white' : '#333',
+                opacity: selectedWariate === wariate.name ? 1 : 0.6
+              }}
+            >
+              {wariate.name}
+            </button>
+          ))}
+        </div>
 
-          <div className={styles.formGroup}>
-            {/* ★ 全選択用のチェックボックスを追加 */}
-            <div className={styles.checkboxItem} style={{ borderBottom: '1px solid #ccc', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
-              <input
-                type="checkbox"
-                id="select-all-routes"
-                checked={isAllSelected}
-                onChange={handleSelectAllChange}
-              />
-              <label htmlFor="select-all-routes" style={{ fontWeight: 'bold' }}>すべて選択 / 解除</label>
-            </div>
-            
-            <div className={styles.netaCheckboxContainer}>
-              {allRoutes.map((route, index) => (
-                <div key={index} className={styles.checkboxItem}>
+        {/* ルートチェックボックス */}
+        {selectedWariate && (
+          <>
+            <div style={{ 
+              border: '1px solid #ddd', 
+              borderRadius: '4px', 
+              padding: '1rem',
+              marginBottom: '1rem',
+              maxHeight: '300px',
+              overflowY: 'auto'
+            }}>
+              <div style={{ marginBottom: '0.5rem', fontWeight: 'bold', color: '#666' }}>
+                出力するルート:
+              </div>
+              {displayRoutes.map(route => (
+                <label 
+                  key={route} 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem',
+                    padding: '0.3rem 0',
+                    cursor: 'pointer'
+                  }}
+                >
                   <input
                     type="checkbox"
-                    id={`route-${index}`}
-                    value={route}
-                    checked={selectedRoutes.includes(route)}
-                    onChange={handleRouteChange}
+                    checked={checkedRoutes[route] || false}
+                    onChange={() => handleRouteCheck(route)}
+                    style={{ width: '18px', height: '18px' }}
                   />
-                  <label htmlFor={`route-${index}`}>{route}</label>
-                </div>
+                  {route}
+                </label>
               ))}
             </div>
-          </div>
-          
-          <div className={styles.formActions}>
-            <button type="button" onClick={onClose} className={styles.cancelButton}>キャンセル</button>
-            <button type="submit" className={styles.saveButton}>作成</button>
-          </div>
-        </form>
+
+            <button 
+              onClick={handleSubmit}
+              style={{ 
+                width: '100%',
+                padding: '0.75rem 1rem',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                backgroundColor: '#e91e63',
+                color: 'white',
+                fontWeight: 'bold'
+              }}
+            >
+              {selectedWariate} 用で作成
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

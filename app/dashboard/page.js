@@ -58,6 +58,126 @@ const OrderInfoCell = ({ order}) => {
   );
 };
 
+// 宛名Excel出力用モーダルコンポーネント
+const WariateExcelModal = ({ deliveryWariate, deliveryRoutes, onClose, onExport }) => {
+  const [selectedWariate, setSelectedWariate] = useState('');
+  const [checkedRoutes, setCheckedRoutes] = useState({});
+
+  // 割り当てを選択したときの処理
+  const handleWariateSelect = (wariateName) => {
+    setSelectedWariate(wariateName);
+    const wariate = deliveryWariate.find(w => w.name === wariateName);
+    if (wariate) {
+      // 該当する割り当てのresponsibleRoutesを全てtrueにする
+      const newCheckedRoutes = {};
+      (wariate.responsibleRoutes || []).forEach(route => {
+        newCheckedRoutes[route] = true;
+      });
+      setCheckedRoutes(newCheckedRoutes);
+    }
+  };
+
+  // チェックボックスの変更処理
+  const handleRouteCheck = (route) => {
+    setCheckedRoutes(prev => ({
+      ...prev,
+      [route]: !prev[route]
+    }));
+  };
+
+  // 作成ボタンの処理
+  const handleSubmit = () => {
+    const selectedRoutes = Object.keys(checkedRoutes).filter(route => checkedRoutes[route]);
+    if (selectedRoutes.length === 0) {
+      alert('少なくとも1つのルートを選択してください。');
+      return;
+    }
+    onExport(selectedWariate, selectedRoutes);
+  };
+
+  // 表示するルート一覧（選択された割り当てのresponsibleRoutes）
+  const displayRoutes = useMemo(() => {
+    if (!selectedWariate) return [];
+    const wariate = deliveryWariate.find(w => w.name === selectedWariate);
+    return wariate?.responsibleRoutes || [];
+  }, [selectedWariate, deliveryWariate]);
+
+  return (
+    <div className="settings-modal-backdrop" onClick={onClose}>
+      <div className="settings-modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
+        <div className="settings-modal-header">
+          <h2>作成する領収書を選択</h2>
+          <button onClick={onClose} className="settings-modal-close-btn">&times;</button>
+        </div>
+        
+        {/* 割り当て選択ボタン */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          {(deliveryWariate || []).map(wariate => (
+            <button 
+              key={wariate.name} 
+              onClick={() => handleWariateSelect(wariate.name)}
+              className={selectedWariate === wariate.name ? 'copy-button' : 'gray-button'}
+              style={{ 
+                flex: '1',
+                minWidth: '100px',
+                opacity: selectedWariate === wariate.name ? 1 : 0.6
+              }}
+            >
+              {wariate.name}
+            </button>
+          ))}
+        </div>
+
+        {/* ルートチェックボックス */}
+        {selectedWariate && (
+          <>
+            <div style={{ 
+              border: '1px solid #ddd', 
+              borderRadius: '4px', 
+              padding: '1rem',
+              marginBottom: '1rem',
+              maxHeight: '300px',
+              overflowY: 'auto'
+            }}>
+              <div style={{ marginBottom: '0.5rem', fontWeight: 'bold', color: '#666' }}>
+                出力するルート:
+              </div>
+              {displayRoutes.map(route => (
+                <label 
+                  key={route} 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem',
+                    padding: '0.3rem 0',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checkedRoutes[route] || false}
+                    onChange={() => handleRouteCheck(route)}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  {route}
+                </label>
+              ))}
+            </div>
+
+            <button 
+              onClick={handleSubmit}
+              className="copy-button"
+              style={{ width: '100%' }}
+            >
+              {selectedWariate} 用で作成
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // 「備考」列を生成するためのヘルパーコンポーネント
 const NotesCell = ({ order, productsMaster }) => {
   const notes = [];
@@ -100,7 +220,7 @@ const OrderListPage = () => {
   const { configuration, loading: configLoading, error: configError, selectedYear } = useConfiguration();
   const [apiData, setApiData] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedRoute, setSelectedRoute] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState(''); // 統合フィルタ用
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -127,6 +247,35 @@ const OrderListPage = () => {
   const deliveryWariate = useMemo(() => (configuration?.deliveryWariate || []), [configuration]);
   
   const productsMaster = useMemo(() => apiData?.masters?.products || {}, [apiData]);
+
+  // 統合フィルタの選択肢を生成
+  // deliveryWariate の name を先に、その後に deliveryWariate の name と同名でない deliveryRoutes を追加
+  const filterOptions = useMemo(() => {
+    // deliveryWariate の name を集める
+    const wariateNames = new Set((deliveryWariate || []).map(w => w.name));
+
+    // deliveryWariate の name をリストに追加（type: 'wariate'）
+    const options = (deliveryWariate || []).map(w => ({
+      value: w.name,
+      label: w.name,
+      type: 'wariate',
+      routes: w.responsibleRoutes || []
+    }));
+
+    // deliveryRoutes の中で deliveryWariate の name と同名でないものを追加（type: 'route'）
+    (deliveryRoutes || []).forEach(route => {
+      if (!wariateNames.has(route)) {
+        options.push({
+          value: route,
+          label: route,
+          type: 'route',
+          routes: [route]
+        });
+      }
+    });
+
+    return options;
+  }, [deliveryWariate, deliveryRoutes]);
 
   const processedOrders = useMemo(() => {
     if (!apiData || !apiData.orders) return [];
@@ -177,7 +326,7 @@ const OrderListPage = () => {
     if (!selectedDate) { alert('日付を選択してください。'); return; }
     setIsLoading(true); 
     setError(null);
-    //setSelectedRoute('');
+    //setSelectedFilter('');
     setOrders([]);
     setCurrentDate(selectedDate);
     try {
@@ -245,12 +394,14 @@ const OrderListPage = () => {
     }
   };
 
-  const handleWariateSelectAndExport = async (warihuriName) => {
+  const handleWariateSelectAndExport = async (warihuriName, selectedRoutes) => {
     setIsWariateModalOpen(false); // モーダルを閉じる
 
     const selectedDay = selectedDate.split('/')[2];
 
-    const receiptsToExport = filteredOrders.flatMap(order => 
+    const receiptsToExport = filteredOrders
+    .filter(order => selectedRoutes.includes(order.assignedRoute)) // 選択されたルートでフィルタ
+    .flatMap(order => 
       (order.receipts || []).map(receipt => ({
         recipientName: receipt.recipientName,
         amount: receipt.amount,
@@ -354,18 +505,29 @@ const OrderListPage = () => {
   };
   
   const filteredOrders = useMemo(() => {
-    const filteredByRoute = selectedRoute 
-      ? processedOrders.filter(order => order.assignedRoute === selectedRoute)
-      : processedOrders;
-    const filteredBySearch = searchTerm
-      ? filteredByRoute.filter(order => 
-          Object.values(order).some(value => 
-            String(value).toLowerCase().includes(searchTerm.toLowerCase())
-          )
+    let filtered = processedOrders;
+
+    // 統合フィルタでフィルタリング
+    if (selectedFilter) {
+      const selectedOption = filterOptions.find(opt => opt.value === selectedFilter);
+      if (selectedOption) {
+        filtered = filtered.filter(order => 
+          selectedOption.routes.includes(order.assignedRoute)
+        );
+      }
+    }
+
+    // 検索でフィルタリング
+    if (searchTerm) {
+      filtered = filtered.filter(order => 
+        Object.values(order).some(value => 
+          String(value).toLowerCase().includes(searchTerm.toLowerCase())
         )
-      : filteredByRoute;
-    return filteredBySearch.sort((a, b) => (a.orderId || '').localeCompare(b.orderId || ''));
-  }, [processedOrders, selectedRoute, searchTerm]);
+      );
+    }
+
+    return filtered.sort((a, b) => (a.orderId || '').localeCompare(b.orderId || ''));
+  }, [processedOrders, selectedFilter, searchTerm, filterOptions]);
 
   if (configLoading) return <h4>設定読み込み中...</h4>;
 
@@ -387,31 +549,18 @@ const OrderListPage = () => {
       {isIchiranExcelModalOpen && (
         <IchiranExcelModal
           allRoutes={deliveryRoutes}
+          deliveryWariate={deliveryWariate}
           onClose={() => setIsIchiranExcelModalOpen(false)}
           onSubmit={handleExportIchiranExcel}
         />
       )}
       {isWariateModalOpen && (
-        <div className="settings-modal-backdrop" onClick={() => setIsWariateModalOpen(false)}>
-          {/* ↓↓↓ settings-modal-content の max-width を直接指定します ↓↓↓ */}
-          <div className="settings-modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
-            <div className="settings-modal-header">
-              <h2>作成する領収書を選択</h2>
-              <button onClick={() => setIsWariateModalOpen(false)} className="settings-modal-close-btn">&times;</button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {(deliveryWariate || []).map(wariate => (
-                <button 
-                  key={wariate.name} 
-                  onClick={() => handleWariateSelectAndExport(wariate.name)}
-                  className="copy-button"
-                >
-                  {wariate.name} 用で作成
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <WariateExcelModal
+          deliveryWariate={deliveryWariate}
+          deliveryRoutes={deliveryRoutes}
+          onClose={() => setIsWariateModalOpen(false)}
+          onExport={handleWariateSelectAndExport}
+        />
       )}
 
       <h1 className="admin-header">注文一覧 ({selectedYear}年)</h1>
@@ -435,7 +584,10 @@ const OrderListPage = () => {
       
       <div className="list-controls">
         <div className="filters">
-          <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}>
+          <select value={selectedDate} onChange={(e) => {
+            setSelectedDate(e.target.value);
+            setSelectedFilter('');
+          }}>
             <option value="">日付選択</option>
             {deliveryDates.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
@@ -450,9 +602,11 @@ const OrderListPage = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <select value={selectedRoute} onChange={(e) => setSelectedRoute(e.target.value)}>
-            <option value="">担当選択 (すべて)</option>
-            {(deliveryRoutes || []).map(w => <option key={w} value={w}>{w}</option>)}
+          <select value={selectedFilter} onChange={(e) => setSelectedFilter(e.target.value)}>
+            <option value="">割り振り選択 (すべて)</option>
+            {filterOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
           </select>
           <button title="最終確認メール" onClick={handleSendBatchEmail}>
             <Mail size={20} />
