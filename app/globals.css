@@ -3263,3 +3263,18 @@ th {
   font-size: 0.875rem;
   color: #92400e;
 }
+/* ネタ管理テーブル - ドラッグハンドル */
+.neta-master-table th:last-child,
+.neta-master-table td:last-child {
+  width: 40px;
+  text-align: center;
+}
+
+.neta-master-table .drag-handle {
+  cursor: grab;
+  user-select: none;
+}
+
+.neta-master-table .drag-handle:active {
+  cursor: grabbing;
+}

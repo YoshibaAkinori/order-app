@@ -11,6 +11,35 @@ import WariateForm from '../../components/WariateForm';
 import DeliveryDatesModal from '../../components/DeliveryDatesModal';
 import DeliveryTimesModal from '../../components/DeliveryTimesModal';
 import DeliveryRoutesModal from '../../components/DeliveryRoutesModal';
+// ★ ドラッグ＆ドロップ用
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// ★ ドラッグ可能な行コンポーネント
+function SortableNetaRow({ neta, onEdit, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: neta.netaName });
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style}>
+      <td>{neta.netaName}</td>
+      <td>{neta.category}</td>
+      <td>
+        <div className="action-buttons">
+          <button onClick={() => onEdit(neta)} className="edit-button">編集</button>
+          <button onClick={() => onDelete(neta.netaName)} className="delete-button">削除</button>
+        </div>
+      </td>
+      <td className="drag-handle" {...attributes} {...listeners}>☰</td>
+    </tr>
+  );
+}
 
 
 export default function ProductAdminPage() {
@@ -277,33 +306,29 @@ export default function ProductAdminPage() {
         );
       case 'netaMaster':
         return (
-          <>
-            <div className="admin-controls-container" style={{marginBottom: '1rem'}}>
-              <h2>ネタ種類</h2>
-              <button onClick={handleAddNewNeta}>+ 新しいネタを追加</button>
-            </div>
-            <table className='mastatable'>
-              <thead><tr><th>ネタ名</th><th>カテゴリ</th><th>操作</th></tr></thead>
-              <tbody>
-                {(netaMaster || []).map(neta => (
-                  <tr key={neta.netaName}>
-                    <td>{neta.netaName}</td>
-                    <td>{neta.category}</td>
-                    <td>
-                      <div className="action-buttons">
-                        <button onClick={() => handleEditNeta(neta)} className="edit-button">編集</button>
-                        <button onClick={() => handleDeleteNeta(neta.netaName)} className="delete-button">削除</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
+          <NetaMasterSection 
+            netaMaster={netaMaster}
+            onAddNew={handleAddNewNeta}
+            onEdit={handleEditNeta}
+            onDelete={handleDeleteNeta}
+            onReorder={handleNetaReorder}
+          />
         );
       default:
         return null;
     }
+  };
+
+  // ★ ネタの並び替え処理
+  const handleNetaReorder = async (newOrder) => {
+    // 新しい順番でdisplayOrderを更新
+    for (let i = 0; i < newOrder.length; i++) {
+      const neta = newOrder[i];
+      if (neta.displayOrder !== i + 1) {
+        await updateNeta(neta.netaName, { ...neta, displayOrder: i + 1 });
+      }
+    }
+    fetchConfiguration(selectedYear);
   };
 
   return (
@@ -389,5 +414,96 @@ export default function ProductAdminPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ★ ネタマスター管理セクション（ドラッグ＆ドロップ対応）
+function NetaMasterSection({ netaMaster, onAddNew, onEdit, onDelete, onReorder }) {
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  
+  // displayOrderでソートしたリストをローカルstateで管理
+  const [localNetaList, setLocalNetaList] = useState([]);
+  
+  // netaMasterが変わったらローカルstateを更新
+  React.useEffect(() => {
+    const sorted = [...(netaMaster || [])].sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
+    setLocalNetaList(sorted);
+    setHasChanges(false);
+  }, [netaMaster]);
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = localNetaList.findIndex(n => n.netaName === active.id);
+    const newIndex = localNetaList.findIndex(n => n.netaName === over.id);
+    const newOrder = arrayMove(localNetaList, oldIndex, newIndex);
+
+    setLocalNetaList(newOrder);
+    setHasChanges(true);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onReorder(localNetaList);
+      setHasChanges(false);
+      alert('順番を保存しました。');
+    } catch (e) {
+      alert('保存に失敗しました: ' + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    const sorted = [...(netaMaster || [])].sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
+    setLocalNetaList(sorted);
+    setHasChanges(false);
+  };
+
+  return (
+    <>
+      <div className="admin-controls-container" style={{marginBottom: '1rem'}}>
+        <h2>ネタ種類</h2>
+        <button onClick={onAddNew}>+ 新しいネタを追加</button>
+      </div>
+      <p style={{fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem', textAlign: 'right'}}>☰ をドラッグして並び替えできます</p>
+      
+      {hasChanges && (
+        <div style={{marginBottom: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end'}}>
+          <button onClick={handleSave} disabled={isSaving} style={{backgroundColor: '#4CAF50', color: 'white', padding: '0.5rem 1rem', border: 'none', borderRadius: '4px', cursor: 'pointer'}}>
+            {isSaving ? '保存中...' : '順番を保存'}
+          </button>
+          <button onClick={handleCancel} disabled={isSaving} style={{backgroundColor: '#888', color: 'white', padding: '0.5rem 1rem', border: 'none', borderRadius: '4px', cursor: 'pointer'}}>
+            キャンセル
+          </button>
+        </div>
+      )}
+      
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={localNetaList.map(n => n.netaName)} strategy={verticalListSortingStrategy}>
+          <table className='mastatable neta-master-table'>
+            <thead><tr><th>ネタ名</th><th>カテゴリ</th><th>操作</th><th></th></tr></thead>
+            <tbody>
+              {localNetaList.map(neta => (
+                <SortableNetaRow 
+                  key={neta.netaName} 
+                  neta={neta} 
+                  onEdit={onEdit} 
+                  onDelete={onDelete} 
+                />
+              ))}
+            </tbody>
+          </table>
+        </SortableContext>
+      </DndContext>
+    </>
   );
 }

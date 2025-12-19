@@ -170,27 +170,41 @@ const SummaryPage = () => {
       }
     });
 
-    // 2. サビ抜き注文のシャリ玉数を計算（商品ごとのシャリ玉数を考慮）
+    // 2. ネタマスターから「シャリ玉」カテゴリのネタ名一覧を取得
+    const shariNetaNames = new Set(
+      (masters.netaMaster || [])
+        .filter(neta => neta.category === 'シャリ玉')
+        .map(neta => neta.netaName)
+    );
+
+    // 3. サビ抜き注文のシャリ玉数を計算（商品ごとに計算）
     let sabinukiShariTotal = 0;
     Object.keys(product_summary || {}).forEach(productKey => {
       const summary = product_summary[productKey];
       const productMaster = masters.products[productKey];
       
-      // 商品マスターからシャリ玉の数量を取得
-      const shariNetaInfo = (productMaster?.neta || []).find(n => n.name === 'シャリ玉');
-      const shariQtyPerProduct = shariNetaInfo ? (shariNetaInfo.quantity || 1) : 1;
+      // 商品マスターのネタから「シャリ玉」カテゴリのネタ数を合計
+      let shariQtyPerProduct = 0;
+      (productMaster?.neta || []).forEach(netaItem => {
+        if (shariNetaNames.has(netaItem.name)) {
+          shariQtyPerProduct += netaItem.quantity || 1;
+        }
+      });
       
-      // サビ抜き注文数 × 商品あたりのシャリ玉数
-      const sabinukiCount = (summary.normal_nowasabi || 0) + (summary.changed_nowasabi || 0);
+      // サビ抜き注文数（通常・ネタ変・折すべて含む） × 商品あたりのシャリ玉数
+      const sabinukiCount = (summary.normal_nowasabi || 0) 
+                          + (summary.normal_nowasabi_ori || 0)
+                          + (summary.changed_nowasabi || 0) 
+                          + (summary.changed_nowasabi_ori || 0);
       sabinukiShariTotal += sabinukiCount * shariQtyPerProduct;
     });
 
-    // 3. シャリ玉からサビ抜き分を減算
+    // 4. シャリ玉からサビ抜き分を減算
     if (totals['シャリ玉']) {
       totals['シャリ玉'] -= sabinukiShariTotal;
     }
 
-    // 4. サビ抜き玉カテゴリに加算
+    // 5. サビ抜き玉カテゴリに加算
     if (!totals['サビ抜き玉']) {
       totals['サビ抜き玉'] = 0;
     }
